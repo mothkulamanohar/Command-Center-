@@ -1,0 +1,16 @@
+{
+  "name": "IT Command Center",
+  "short_name": "Command Center",
+  "description": "IT Command Center & Operations Console",
+  "start_url": "/console",
+  "display": "standalone",
+  "background_color": "#F4F2EC",
+  "theme_color": "#17191E",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
