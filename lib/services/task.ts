@@ -44,7 +44,7 @@ export async function createTask(actor: UserContext, input: z.infer<typeof Creat
   }
 
   const data = CreateTaskSchema.parse(input);
-  const ownerId = data.ownerId || actor.id;
+  const ownerId: string = data.ownerId || actor.id;
 
   // Check senior person ask -> source=LEADERSHIP, priority=HIGH per F-TASK-14
   let isLeadership = data.source === TaskSource.LEADERSHIP;
@@ -58,7 +58,7 @@ export async function createTask(actor: UserContext, input: z.infer<typeof Creat
     }
   }
 
-  return await db.$transaction(async (tx) => {
+  return await db.$transaction(async (tx: Prisma.TransactionClient) => {
     const task = await tx.task.create({
       data: {
         title: data.title,
@@ -114,7 +114,7 @@ export async function passTaskTurn(
     throw new Error("Task not found or not a shared task");
   }
 
-  return await db.$transaction(async (tx) => {
+  return await db.$transaction(async (tx: Prisma.TransactionClient) => {
     const updated = await tx.task.update({
       where: { id: taskId },
       data: {
@@ -142,7 +142,7 @@ export async function passTaskTurn(
  * F-TASK-05: Mark task done
  */
 export async function markTaskDone(actor: UserContext, taskId: string) {
-  return await db.$transaction(async (tx) => {
+  return await db.$transaction(async (tx: Prisma.TransactionClient) => {
     const task = await tx.task.update({
       where: { id: taskId },
       data: {
