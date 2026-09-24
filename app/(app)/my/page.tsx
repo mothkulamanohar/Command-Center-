@@ -1,4 +1,5 @@
 import { UserCheck, Calendar, MessageSquare, Send } from "lucide-react";
+import { OnboardingCard } from "@/components/onboarding/OnboardingCard";
 
 export default function MySpacePage() {
   return (
@@ -9,6 +10,9 @@ export default function MySpacePage() {
           Personal Workspace • Tasks, Follow-ups, and Daily Update
         </p>
       </div>
+
+      {/* Onboarding Checklist (F-AUTH-09) */}
+      <OnboardingCard />
 
       {/* Daily Update Prompt Box (SPEC §10.3) */}
       <div className="bg-surface rounded-panel border border-line p-5 shadow-xs">
