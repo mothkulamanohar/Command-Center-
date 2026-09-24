@@ -44,7 +44,7 @@ export async function createTask(actor: UserContext, input: z.infer<typeof Creat
   }
 
   const data = CreateTaskSchema.parse(input);
-  const ownerId: string = data.ownerId || actor.id;
+  const ownerId: string = (data.ownerId as string | undefined) || actor.id;
 
   // Check senior person ask -> source=LEADERSHIP, priority=HIGH per F-TASK-14
   let isLeadership = data.source === TaskSource.LEADERSHIP;
