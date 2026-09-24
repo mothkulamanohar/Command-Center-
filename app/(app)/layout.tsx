@@ -1,6 +1,7 @@
 import { Sidebar } from "@/components/shell/Sidebar";
 import { Header } from "@/components/shell/Header";
 import { BottomNav } from "@/components/shell/BottomNav";
+import { CommandBarModal } from "@/components/cmd/CommandBarModal";
 
 export default function AppLayout({
   children,
@@ -22,6 +23,9 @@ export default function AppLayout({
 
       {/* Mobile Bottom Navigation */}
       <BottomNav />
+
+      {/* Global Plain-English Command Bar (SPEC §8) */}
+      <CommandBarModal />
     </div>
   );
 }

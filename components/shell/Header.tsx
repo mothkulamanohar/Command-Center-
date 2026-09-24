@@ -26,7 +26,9 @@ export function Header() {
         <button
           type="button"
           onClick={() =>
-            alert("Command bar (F-CMD) triggered. Available in Phase 2.")
+            window.dispatchEvent(
+              new KeyboardEvent("keydown", { key: "k", ctrlKey: true })
+            )
           }
           className="w-full flex items-center justify-between px-3.5 py-2 bg-ground border border-line rounded-control text-xs text-mutedText hover:border-mutedText transition-colors shadow-xs"
           aria-label="Open command bar"

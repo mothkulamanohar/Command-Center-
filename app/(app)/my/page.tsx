@@ -1,7 +1,14 @@
-import { UserCheck, Calendar, MessageSquare, Send } from "lucide-react";
+"use client";
+
+import { useState } from "react";
+import { UserCheck, MessageSquare, Send } from "lucide-react";
 import { OnboardingCard } from "@/components/onboarding/OnboardingCard";
+import { DailyUpdateModal } from "@/components/updates/DailyUpdateModal";
 
 export default function MySpacePage() {
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
+  const [updatePosted, setUpdatePosted] = useState(false);
+
   return (
     <div className="space-y-6">
       <div>
@@ -25,15 +32,25 @@ export default function MySpacePage() {
             Takes &lt; 30 seconds
           </span>
         </div>
-        <p className="text-xs text-mutedText mb-4 leading-relaxed">
-          Pre-fills with tasks completed today and tasks due tomorrow. Shared to your team chats with Done, Next, and Blockers.
-        </p>
-        <button
-          type="button"
-          className="px-4 py-2 bg-primary hover:bg-primary-hover text-white text-xs font-medium rounded-control transition-colors shadow-xs"
-        >
-          Post Today&apos;s Update
-        </button>
+
+        {updatePosted ? (
+          <div className="p-3 bg-[#3FB8AC]/10 border border-[#3FB8AC]/30 rounded-control text-xs text-[#0E6E66] font-medium font-mono">
+            ✔ Today&apos;s daily update has been posted to your team channels!
+          </div>
+        ) : (
+          <>
+            <p className="text-xs text-mutedText mb-4 leading-relaxed">
+              Pre-fills with tasks completed today and tasks due tomorrow. Shared to your team chats with Done, Next, and Blockers.
+            </p>
+            <button
+              type="button"
+              onClick={() => setIsUpdateModalOpen(true)}
+              className="px-4 py-2 bg-primary hover:bg-primary-hover text-white text-xs font-medium rounded-control transition-colors shadow-xs"
+            >
+              Post Today&apos;s Update
+            </button>
+          </>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -59,6 +76,17 @@ export default function MySpacePage() {
           </div>
         </div>
       </div>
+
+      {/* Daily Update Modal Dialog */}
+      <DailyUpdateModal
+        isOpen={isUpdateModalOpen}
+        onClose={() => setIsUpdateModalOpen(false)}
+        initialDone="• T-1042: Reviewed admission form deployment"
+        initialNext="• T-1043: Sign off on UOS staging credentials"
+        onSubmit={(data) => {
+          setUpdatePosted(true);
+        }}
+      />
     </div>
   );
 }
