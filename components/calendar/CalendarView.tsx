@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Calendar as CalendarIcon, Clock, MapPin, Tag, Plus, X } from "lucide-react";
+import { Calendar as CalendarIcon, Clock, MapPin, Tag, Plus, X, Download } from "lucide-react";
 
 export interface CalendarEvent {
   id: string;
@@ -62,6 +62,34 @@ export function CalendarView({ events, onAddEvent }: CalendarViewProps) {
     setIsModalOpen(false);
   };
 
+  const handleExportIcs = () => {
+    const lines = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//IT Command Center//Calendar Engine//EN",
+      "CALSCALE:GREGORIAN",
+      "METHOD:PUBLISH",
+    ];
+    for (const ev of events) {
+      lines.push("BEGIN:VEVENT");
+      lines.push(`UID:${ev.id}@commandcenter.local`);
+      lines.push(`SUMMARY:${ev.title}`);
+      if (ev.location) lines.push(`LOCATION:${ev.location}`);
+      lines.push("STATUS:CONFIRMED");
+      lines.push("END:VEVENT");
+    }
+    lines.push("END:VCALENDAR");
+    const blob = new Blob([lines.join("\r\n")], { type: "text/calendar;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "smru-calendar.ics";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="space-y-4">
       {/* Filter and New Event Button */}
@@ -72,7 +100,7 @@ export function CalendarView({ events, onAddEvent }: CalendarViewProps) {
               key={k}
               type="button"
               onClick={() => setSelectedKind(k)}
-              className={`px-2.5 py-1 rounded-control text-xs font-medium font-mono uppercase transition-colors shrink-0 ${
+              className={`px-2.5 py-1 rounded-control text-xs font-medium font-mono uppercase transition-colors shrink-0 cursor-pointer ${
                 selectedKind === k
                   ? "bg-primary text-white"
                   : "bg-surface border border-line text-mutedText hover:text-ink"
@@ -83,14 +111,25 @@ export function CalendarView({ events, onAddEvent }: CalendarViewProps) {
           ))}
         </div>
 
-        <button
-          type="button"
-          onClick={() => setIsModalOpen(true)}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary hover:bg-primary-hover text-white rounded-control text-xs font-semibold shadow-2xs self-start"
-        >
-          <Plus className="h-3.5 w-3.5" />
-          <span>New Event</span>
-        </button>
+        <div className="flex items-center gap-2 self-start">
+          <button
+            type="button"
+            onClick={handleExportIcs}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-surface hover:bg-surface-alt border border-line text-ink rounded-control text-xs font-medium transition-colors cursor-pointer shadow-2xs"
+            title="Download iCalendar (.ics) feed"
+          >
+            <Download className="h-3.5 w-3.5 text-mutedText" />
+            <span>Export .ICS</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary hover:bg-primary-hover text-white rounded-control text-xs font-semibold shadow-2xs cursor-pointer"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            <span>New Event</span>
+          </button>
+        </div>
       </div>
 
       {/* Events List Cards */}
