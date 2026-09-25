@@ -168,6 +168,7 @@ export function Sidebar({ userRole: initialRole = RoleKey.ADMIN }: { userRole?: 
             <Link
               key={item.href}
               href={item.href}
+              prefetch={true}
               className={`flex items-center justify-between px-3 py-2 rounded-control text-xs font-medium transition-colors min-h-touch ${
                 isActive
                   ? "bg-[#252830] text-[#3FB8AC]"

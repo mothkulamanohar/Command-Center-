@@ -54,3 +54,15 @@ body {
 code, pre, .font-mono {
   font-family: var(--font-ibm-plex-mono);
 }
+
+/* Ultra-responsive tactile button & link feedback */
+button, a, [role="button"] {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  cursor: pointer;
+}
+
+button:active:not(:disabled), [role="button"]:active:not(:disabled) {
+  transform: scale(0.97);
+  transition: transform 40ms cubic-bezier(0.2, 0, 0, 1);
+}

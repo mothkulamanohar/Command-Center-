@@ -38,7 +38,7 @@ export const UpdateTaskSchema = z.object({
 /**
  * F-TASK-01: Create task with Leadership detection (F-TASK-14)
  */
-export async function createTask(actor: UserContext, input: z.infer<typeof CreateTaskSchema>) {
+export async function createTask(actor: UserContext, input: z.input<typeof CreateTaskSchema>) {
   if (!can(actor, "create_task")) {
     throw new Error("Unauthorized to create tasks");
   }

@@ -140,7 +140,23 @@ export default function ReportsPage() {
   };
 
   const handleDownload = (fileName: string) => {
-    showToast(`Report downloaded: ${fileName}`);
+    showToast(`Downloading: ${fileName}`);
+    // Trigger immediate browser download
+    const content = `=========================================\r\nSMRU IT COMMAND CENTER - LEADERSHIP REPORT\r\nReport: ${fileName}\r\nGenerated: ${new Date().toLocaleString("en-IN")}\r\n=========================================\r\n\r\nWeekly KPIs:\r\n- Tasks Completed: 38 (Target: 35) +12%\r\n- On-Time Delivery: 88% (Target: 85%)\r\n- Overdue Open: 2 (Target: 0)\r\n- Requests Closed: 92% (Target: 90%)\r\n- Daily Update Compliance: 94% (Target: 90%)\r\n- Website Uptime: 99.94% (Target: 99.5%)\r\n\r\nJPR Status: Good (89% progress)\r\nJPA Overall Score: 4.6 / 5.0 (High Performer)\r\n`;
+    const mime = fileName.endsWith(".xlsx")
+      ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      : fileName.endsWith(".docx")
+      ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      : "application/pdf";
+    const blob = new Blob([content], { type: `${mime};charset=utf-8` });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   return (
