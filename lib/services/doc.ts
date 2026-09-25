@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { Prisma } from "@prisma/client";
 import { can, AuthUser } from "@/lib/auth/can";
 import { logAudit } from "./audit";
 
@@ -7,7 +8,7 @@ export interface SaveDocInput {
   spaceId: string;
   parentId?: string;
   title: string;
-  content: any; // JSON or markdown text
+  content: Prisma.InputJsonValue; // JSON or markdown text
   template?: string;
 }
 
@@ -41,7 +42,7 @@ export async function createDocSpace(actor: AuthUser, name: string, teamId?: str
 }
 
 export async function listDocs(spaceId?: string, search?: string) {
-  const where: any = { deletedAt: null };
+  const where: Prisma.DocWhereInput = { deletedAt: null };
   if (spaceId) where.spaceId = spaceId;
   if (search) {
     where.OR = [
@@ -84,7 +85,7 @@ export async function saveDoc(actor: AuthUser, input: SaveDocInput) {
     await prisma.docVersion.create({
       data: {
         docId: existing.id,
-        content: existing.content as any,
+        content: (existing.content ?? {}) as Prisma.InputJsonValue,
         byId: existing.updatedById,
       },
     });
