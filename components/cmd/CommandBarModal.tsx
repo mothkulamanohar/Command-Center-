@@ -48,15 +48,38 @@ export function CommandBarModal() {
     }
   }, [input]);
 
-  const handleRun = () => {
-    if (!input.trim() || !preview) return;
+  const handleRun = (explicitInput?: string, explicitPreview?: ParseResult) => {
+    const textToRun = explicitInput ?? input;
+    const previewToRun = explicitPreview ?? preview;
+    if (!textToRun.trim() || !previewToRun) return;
 
-    setHistory((prev) => [input, ...prev.slice(0, 19)]);
-    setToast(`Executed: ${preview.preview}`);
+    setHistory((prev) => [textToRun, ...prev.slice(0, 19)]);
+    setToast(`Executed: ${previewToRun.preview}`);
     setTimeout(() => setToast(null), 10000); // 10s undo window per SPEC §4.2
+
+    // Dispatch event so Console and other views update in real-time
+    window.dispatchEvent(
+      new CustomEvent("command-executed", {
+        detail: {
+          input: textToRun,
+          intent: previewToRun.intent,
+          slots: previewToRun.slots,
+          preview: previewToRun.preview,
+        },
+      })
+    );
 
     setInput("");
     setIsOpen(false);
+  };
+
+  const handleExampleSelect = (text: string, executeImmediately = false) => {
+    setInput(text);
+    const res = parseCommand(text);
+    setPreview(res);
+    if (executeImmediately && res) {
+      handleRun(text, res);
+    }
   };
 
   if (!isOpen && !toast) return null;
@@ -123,63 +146,65 @@ export function CommandBarModal() {
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
-                className="text-mutedText hover:text-ink p-1 rounded-control"
+                className="text-mutedText hover:text-ink p-1 rounded-control cursor-pointer"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
 
-            {/* Live Preview Line per SPEC §8.1 */}
+            {/* Live Preview & One-Click Execute Bar */}
             {preview && (
-              <div className="px-4 py-2.5 bg-ground border-b border-line flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => handleRun()}
+                className="w-full px-4 py-2.5 bg-ground hover:bg-primary/10 border-b border-line flex items-center justify-between transition-colors cursor-pointer text-left group"
+                aria-label="Execute command"
+              >
                 <div className="flex items-center gap-2 text-xs font-mono text-ink">
-                  <Sparkles className="h-3.5 w-3.5 text-primary shrink-0" />
-                  <span className="font-semibold text-primary uppercase text-[10px]">
+                  <Sparkles className="h-3.5 w-3.5 text-primary shrink-0 group-hover:scale-110 transition-transform" />
+                  <span className="font-semibold text-primary uppercase text-[10px] bg-primary/10 px-1.5 py-0.5 rounded">
                     {preview.intent}:
                   </span>
-                  <span className="truncate">{preview.preview}</span>
+                  <span className="truncate group-hover:text-primary transition-colors">{preview.preview}</span>
                 </div>
-                <div className="flex items-center gap-1 text-[10px] font-mono text-mutedText">
-                  <span>Enter</span>
-                  <CornerDownLeft className="h-2.5 w-2.5" />
+                <div className="flex items-center gap-1.5 text-[10px] font-mono text-white bg-primary hover:bg-primary-hover px-2.5 py-1 rounded shadow-xs shrink-0 ml-2">
+                  <span className="font-semibold">Enter</span>
+                  <CornerDownLeft className="h-3 w-3" />
                 </div>
-              </div>
+              </button>
             )}
 
             {/* Suggestions & Cheatsheet */}
             <div className="p-4 space-y-2 text-xs text-mutedText bg-surface-alt">
               <div className="text-[10px] font-mono uppercase tracking-wider text-mutedText">
-                Examples you can type:
+                Examples you can type or click:
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 font-mono text-[11px]">
-                <button
-                  type="button"
-                  onClick={() => setInput("Ask Hari to check fee page by tomorrow, chase daily")}
-                  className="p-2 bg-surface border border-line rounded-control text-left hover:border-primary text-ink transition-colors"
-                >
-                  Ask Hari to check fee page by tomorrow, chase daily
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setInput("Add: VC wants placement report by Monday")}
-                  className="p-2 bg-surface border border-line rounded-control text-left hover:border-primary text-ink transition-colors"
-                >
-                  Add: VC wants placement report by Monday
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setInput("Pass UOS rollout to Hari")}
-                  className="p-2 bg-surface border border-line rounded-control text-left hover:border-primary text-ink transition-colors"
-                >
-                  Pass UOS rollout to Hari
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setInput("what's my day?")}
-                  className="p-2 bg-surface border border-line rounded-control text-left hover:border-primary text-ink transition-colors"
-                >
-                  what&apos;s my day?
-                </button>
+                {[
+                  "Ask Hari to check fee page by tomorrow, chase daily",
+                  "Add: VC wants placement report by Monday",
+                  "Pass UOS rollout to Hari",
+                  "what's my day?",
+                ].map((ex) => (
+                  <div
+                    key={ex}
+                    onClick={() => handleExampleSelect(ex, false)}
+                    className="p-2.5 bg-surface border border-line rounded-control text-left hover:border-primary text-ink transition-colors cursor-pointer flex items-center justify-between gap-2 group"
+                  >
+                    <span className="line-clamp-2">{ex}</span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleExampleSelect(ex, true);
+                      }}
+                      className="shrink-0 px-2 py-0.5 bg-primary/10 hover:bg-primary text-primary hover:text-white rounded text-[10px] font-medium transition-colors cursor-pointer shadow-xs"
+                      title="Run immediately"
+                    >
+                      Run &rarr;
+                    </button>
+                  </div>
+                ))}
               </div>
             </div>
           </div>

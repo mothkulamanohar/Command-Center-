@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ThreeColumns } from "@/components/tasks/ThreeColumns";
 import { Clock, ShieldAlert, CheckCircle2 } from "lucide-react";
 import { TaskStatus } from "@prisma/client";
@@ -14,6 +14,7 @@ import {
   getInitialConsoleTasks,
   TaskWithRelations,
 } from "@/lib/mock/consoleData";
+import { createCommandTask, createCommandChase } from "@/lib/mock/consoleActions";
 
 export default function ConsolePage() {
   const sriId = "u_sri";
@@ -28,25 +29,71 @@ export default function ConsolePage() {
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3000);
+    setTimeout(() => setToastMessage(null), 3500);
   };
 
+  useEffect(() => {
+    const handleCommand = (e: Event) => {
+      const customEvent = e as CustomEvent<{
+        intent: string;
+        input: string;
+        slots: Record<string, any>;
+        preview: string;
+      }>;
+      const { intent, slots, input } = customEvent.detail || {};
+
+      if (intent === "ADD_TASK") {
+        const newTask = createCommandTask(input, slots, sriId);
+        setIOwe((prev) => [newTask, ...prev]);
+        showToast(`Task added to 'I Owe': "${newTask.title}"`);
+      } else if (intent === "ASSIGN_TASK" || intent === "ASSIGN_WITH_CHASE") {
+        const newChase = createCommandChase(input, slots, sriId);
+        setImChasing((prev) => [newChase, ...prev]);
+        showToast(`Task assigned to ${slots?.owner || "Hari"} (daily chase enabled)`);
+      } else if (intent === "PASS_TURN") {
+        setShared((prev) =>
+          prev.map((t) => ({
+            ...t,
+            turnUserId: t.partnerId || "u_hari",
+            turnNote: "Passed turn via command bar",
+          }))
+        );
+        showToast("Turn passed to partner on shared tasks");
+      } else if (intent === "QUERY_DAY") {
+        showToast("Summary: 1 task due today, 1 chase active, 1 inbox request");
+      }
+    };
+
+    window.addEventListener("command-executed", handleCommand);
+    return () => window.removeEventListener("command-executed", handleCommand);
+  }, [sriId]);
+
   const handleStatusChange = (taskId: string, newStatus: TaskStatus) => {
-    if (newStatus === TaskStatus.DONE) {
-      setIOwe((prev) => prev.filter((t) => t.id !== taskId));
-      showToast("Task completed");
-    }
+    setIOwe((prev) =>
+      prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t))
+    );
+    setImChasing((prev) =>
+      prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t))
+    );
+    setShared((prev) =>
+      prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t))
+    );
+    showToast(newStatus === TaskStatus.DONE ? "Task marked completed" : "Task restored to in-progress");
   };
 
   const handlePassTurn = (taskId: string) => {
     setShared((prev) =>
-      prev.map((t) =>
-        t.id === taskId
-          ? { ...t, turnUserId: t.partnerId, turnNote: "Awaiting partner confirmation" }
-          : t
-      )
+      prev.map((t) => {
+        if (t.id !== taskId) return t;
+        const isMyTurn = t.turnUserId === sriId;
+        return {
+          ...t,
+          turnUserId: isMyTurn ? t.partnerId : sriId,
+          turnNote: isMyTurn ? "Awaiting partner confirmation" : "Your turn to act",
+        };
+      })
     );
-    showToast("Turn passed to partner");
+    showToast("Turn updated successfully!");
   };
 
   const handleApprove = (id: string, text: string) => {

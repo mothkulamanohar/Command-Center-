@@ -76,15 +76,17 @@ export function TaskCard({ task, currentUserId, onStatusChange, onPassTurn }: Ta
               {task.turnNote || "Awaiting action"}
             </span>
           </div>
-          {task.turnUserId === currentUserId && (
-            <button
-              type="button"
-              onClick={() => onPassTurn?.(task.id)}
-              className="ml-2 px-1.5 py-0.5 bg-shared text-white rounded text-[10px] hover:opacity-90 shrink-0"
-            >
-              Pass ball
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => onPassTurn?.(task.id)}
+            className={`ml-2 px-2 py-0.5 rounded text-[10px] font-medium shrink-0 transition-colors shadow-xs cursor-pointer ${
+              task.turnUserId === currentUserId
+                ? "bg-shared text-white hover:opacity-90"
+                : "bg-surface text-shared border border-shared/30 hover:bg-shared hover:text-white"
+            }`}
+          >
+            {task.turnUserId === currentUserId ? "Pass ball" : "Take turn"}
+          </button>
         </div>
       )}
 
