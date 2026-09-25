@@ -17,6 +17,7 @@ import {
   ShieldCheck,
   ShieldAlert,
   SendHorizontal,
+  Trash2,
 } from "lucide-react";
 import { RoleKey } from "@prisma/client";
 import { useState } from "react";
@@ -97,6 +98,12 @@ const allNavItems: NavItem[] = [
     href: "/settings",
     icon: Settings,
     roles: [RoleKey.ADMIN],
+  },
+  {
+    name: "Trash",
+    href: "/trash",
+    icon: Trash2,
+    roles: [RoleKey.ADMIN, RoleKey.LEAD],
   },
 ];
 
