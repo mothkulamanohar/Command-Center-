@@ -3,204 +3,24 @@
 import { useState } from "react";
 import { ThreeColumns } from "@/components/tasks/ThreeColumns";
 import { Clock, ShieldAlert, CheckCircle2 } from "lucide-react";
-import { Task, User, TaskMode, Priority, TaskStatus, TaskSource } from "@prisma/client";
+import { TaskStatus } from "@prisma/client";
 import { MorningBriefCard } from "@/components/brief/MorningBriefCard";
 import { ApprovalQueueModal, PendingApprovalItem } from "@/components/followups/ApprovalQueueModal";
 import { MorningBriefData } from "@/lib/services/brief";
 
-type TaskWithRelations = Task & { owner?: User | null };
-
-const MOCK_BRIEF: MorningBriefData = {
-  date: "Thu, 24 Sep",
-  meetingsToday: [],
-  dueToday: [
-    { id: "t_1", number: 1042, title: "Review monthly KPI report for VC", priority: "HIGH" },
-  ],
-  overdue: [],
-  leadershipAsks: [
-    { id: "t_1", number: 1042, title: "Review monthly KPI report for VC", requesterName: "VC Office" },
-  ],
-  chasesToday: [
-    { id: "fu_1", targetName: "Hari", taskTitle: "Fix admission form verification", tone: "DAILY" },
-  ],
-  stuckItems: [],
-  yesterdayBlockers: [],
-  downSites: [],
-  newRequestsCount: 1,
-  summaryText: "Good morning Sri!\n- **1 task** due today, **0 overdue**.\n- **1 open leadership ask** from VC Office.\n- **1 automated follow-up** going out to Hari at 09:30.\n- **1 new request** waiting in your Inbox.",
-};
-
-const MOCK_PENDING_APPROVALS: PendingApprovalItem[] = [
-  {
-    id: "fu_app_1",
-    targetName: "Janardhan",
-    targetRole: "Support Tech",
-    isSenior: true,
-    taskTitle: "SMRU Main Lab Switch Migration",
-    draftText: "Dear Janardhan sir, a quick check on 'SMRU Main Lab Switch Migration' (due tomorrow). Any update? — sent for Sri",
-    cadence: "DAILY",
-    createdAt: "Today 08:30 AM",
-  },
-];
+import {
+  MOCK_BRIEF,
+  MOCK_PENDING_APPROVALS,
+  getInitialConsoleTasks,
+  TaskWithRelations,
+} from "@/lib/mock/consoleData";
 
 export default function ConsolePage() {
   const sriId = "u_sri";
-  const [iOwe, setIOwe] = useState<TaskWithRelations[]>([
-    {
-      id: "t_1",
-      number: 1042,
-      title: "Review monthly KPI report for VC",
-      description: null,
-      ownerId: sriId,
-      requesterId: "u_vc",
-      requesterName: "VC Office",
-      createdById: "u_vc",
-      mode: TaskMode.SOLO,
-      partnerId: null,
-      turnUserId: null,
-      turnNote: null,
-      status: TaskStatus.TODO,
-      priority: Priority.HIGH,
-      startAt: null,
-      dueAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-      doneAt: null,
-      doneById: null,
-      blockedReason: null,
-      teamId: null,
-      projectId: null,
-      campusId: null,
-      tags: ["leadership", "kpi"],
-      source: TaskSource.LEADERSHIP,
-      recurrence: null,
-      parentId: null,
-      checklist: [],
-      estimateHours: 2,
-      lastActivityAt: new Date(),
-      reopenCount: 0,
-      requestId: null,
-      messageId: null,
-      deletedAt: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    },
-    {
-      id: "t_2",
-      number: 1043,
-      title: "Approve UOS implementation rollout schedule",
-      description: null,
-      ownerId: sriId,
-      requesterId: "u_hari",
-      requesterName: null,
-      createdById: "u_hari",
-      mode: TaskMode.SOLO,
-      partnerId: null,
-      turnUserId: null,
-      turnNote: null,
-      status: TaskStatus.TODO,
-      priority: Priority.MEDIUM,
-      startAt: null,
-      dueAt: new Date(Date.now() + 48 * 60 * 60 * 1000),
-      doneAt: null,
-      doneById: null,
-      blockedReason: null,
-      teamId: null,
-      projectId: null,
-      campusId: null,
-      tags: ["uos"],
-      source: TaskSource.MANUAL,
-      recurrence: null,
-      parentId: null,
-      checklist: [],
-      estimateHours: 1,
-      lastActivityAt: new Date(),
-      reopenCount: 0,
-      requestId: null,
-      messageId: null,
-      deletedAt: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    },
-  ]);
-
-  const [imChasing, setImChasing] = useState<TaskWithRelations[]>([
-    {
-      id: "t_3",
-      number: 1044,
-      title: "Fix admission form verification on smru.in",
-      description: null,
-      ownerId: "u_hari",
-      requesterId: sriId,
-      requesterName: null,
-      createdById: sriId,
-      mode: TaskMode.SOLO,
-      partnerId: null,
-      turnUserId: null,
-      turnNote: null,
-      status: TaskStatus.IN_PROGRESS,
-      priority: Priority.HIGH,
-      startAt: null,
-      dueAt: new Date(Date.now() + 18 * 60 * 60 * 1000),
-      doneAt: null,
-      doneById: null,
-      blockedReason: null,
-      teamId: null,
-      projectId: null,
-      campusId: null,
-      tags: ["admissions"],
-      source: TaskSource.COMMAND,
-      recurrence: null,
-      parentId: null,
-      checklist: [],
-      estimateHours: 3,
-      lastActivityAt: new Date(),
-      reopenCount: 0,
-      requestId: null,
-      messageId: null,
-      deletedAt: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    },
-  ]);
-
-  const [shared, setShared] = useState<TaskWithRelations[]>([
-    {
-      id: "t_4",
-      number: 1045,
-      title: "Renew smru.in SSL & DNS mapping",
-      description: null,
-      ownerId: sriId,
-      requesterId: sriId,
-      requesterName: null,
-      createdById: sriId,
-      mode: TaskMode.SHARED,
-      partnerId: "u_hari",
-      turnUserId: sriId,
-      turnNote: "Sign off checklist",
-      status: TaskStatus.TODO,
-      priority: Priority.HIGH,
-      startAt: null,
-      dueAt: new Date(Date.now() + 72 * 60 * 60 * 1000),
-      doneAt: null,
-      doneById: null,
-      blockedReason: null,
-      teamId: null,
-      projectId: null,
-      campusId: null,
-      tags: ["dns", "ssl"],
-      source: TaskSource.COMMAND,
-      recurrence: null,
-      parentId: null,
-      checklist: [],
-      estimateHours: 1,
-      lastActivityAt: new Date(),
-      reopenCount: 0,
-      requestId: null,
-      messageId: null,
-      deletedAt: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    },
-  ]);
+  const initial = getInitialConsoleTasks(sriId);
+  const [iOwe, setIOwe] = useState<TaskWithRelations[]>(initial.iOwe);
+  const [imChasing, setImChasing] = useState<TaskWithRelations[]>(initial.imChasing);
+  const [shared, setShared] = useState<TaskWithRelations[]>(initial.shared);
 
   const [approvals, setApprovals] = useState<PendingApprovalItem[]>(MOCK_PENDING_APPROVALS);
   const [showApprovalModal, setShowApprovalModal] = useState(false);
