@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 import { formatReportFileName } from "@/lib/services/kpi";
+import { buildLeadershipReportData } from "@/lib/services/report";
+import { renderExecutiveReportHtml } from "@/lib/export/pdf";
+import { generateExcelWorkbookXml } from "@/lib/export/xlsx";
+import { generateDocxDocumentXml } from "@/lib/export/docx";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -23,28 +27,30 @@ export async function GET(req: Request, { params }: RouteParams) {
       extension: format,
     });
 
-    // Content payload
-    const content = `IT Command Center — Leadership Report
-Report: ${type} Report for ${audience}
-Scope: ${scope}
-Period: ${periodTag}
-Generated on: ${new Date().toISOString()}
+    const reportData = buildLeadershipReportData({
+      type,
+      audience,
+      scope,
+      periodTag,
+      format,
+    });
 
-========================================
-EXECUTIVE SUMMARY
-========================================
-- Tasks Completed This Period: 38 (Target: 35)
-- On-Time Delivery Rate: 88% (Target: >= 85%)
-- Daily Update Compliance: 94% (Target: >= 90%)
-- Follow-ups Answered: 85% (Target: >= 80%)
-- Leadership Asks Closed: 100%
-- Core Sites Uptime: 99.94%
+    let content: string;
+    let contentType: string;
 
-Prepared by Sri, IT Manager.
-`;
+    if (format === "xlsx") {
+      content = generateExcelWorkbookXml(reportData);
+      contentType = "application/vnd.ms-excel; charset=utf-8";
+    } else if (format === "docx") {
+      content = generateDocxDocumentXml(reportData);
+      contentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document; charset=utf-8";
+    } else {
+      content = renderExecutiveReportHtml(reportData);
+      contentType = "text/html; charset=utf-8";
+    }
 
     const headers = new Headers();
-    headers.set("Content-Type", format === "pdf" ? "application/pdf" : "text/plain; charset=utf-8");
+    headers.set("Content-Type", contentType);
     headers.set("Content-Disposition", `attachment; filename="${fileName}"`);
 
     return new NextResponse(content, {

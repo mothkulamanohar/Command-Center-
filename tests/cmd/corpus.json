@@ -1,0 +1,690 @@
+[
+  {
+    "input": "help",
+    "expectedIntent": "HELP"
+  },
+  {
+    "input": "?",
+    "expectedIntent": "HELP"
+  },
+  {
+    "input": "what can i type?",
+    "expectedIntent": "HELP"
+  },
+  {
+    "input": "what can I type",
+    "expectedIntent": "HELP"
+  },
+  {
+    "input": "HELP",
+    "expectedIntent": "HELP"
+  },
+  {
+    "input": "undo",
+    "expectedIntent": "UNDO"
+  },
+  {
+    "input": "UNDO",
+    "expectedIntent": "UNDO"
+  },
+  {
+    "input": "Undo",
+    "expectedIntent": "UNDO"
+  },
+  {
+    "input": "undo ",
+    "expectedIntent": "UNDO"
+  },
+  {
+    "input": "what's my day?",
+    "expectedIntent": "QUERY_DAY"
+  },
+  {
+    "input": "whats my day",
+    "expectedIntent": "QUERY_DAY"
+  },
+  {
+    "input": "today",
+    "expectedIntent": "QUERY_DAY"
+  },
+  {
+    "input": "what's due today",
+    "expectedIntent": "QUERY_DAY"
+  },
+  {
+    "input": "whats due today",
+    "expectedIntent": "QUERY_DAY"
+  },
+  {
+    "input": "what's due tomorrow",
+    "expectedIntent": "QUERY_DAY"
+  },
+  {
+    "input": "whats due tomorrow",
+    "expectedIntent": "QUERY_DAY"
+  },
+  {
+    "input": "what am i chasing?",
+    "expectedIntent": "QUERY_CHASING"
+  },
+  {
+    "input": "what am i chasing",
+    "expectedIntent": "QUERY_CHASING"
+  },
+  {
+    "input": "what does Hari owe me",
+    "expectedIntent": "QUERY_CHASING"
+  },
+  {
+    "input": "what does Dev Web owe me?",
+    "expectedIntent": "QUERY_CHASING"
+  },
+  {
+    "input": "what does team owe me",
+    "expectedIntent": "QUERY_CHASING"
+  },
+  {
+    "input": "what does Suresh owe me",
+    "expectedIntent": "QUERY_CHASING"
+  },
+  {
+    "input": "status of UOS",
+    "expectedIntent": "QUERY_STATUS"
+  },
+  {
+    "input": "status of dev team",
+    "expectedIntent": "QUERY_STATUS"
+  },
+  {
+    "input": "status of switch migration",
+    "expectedIntent": "QUERY_STATUS"
+  },
+  {
+    "input": "how is the dev team doing?",
+    "expectedIntent": "QUERY_STATUS"
+  },
+  {
+    "input": "how is Hari doing",
+    "expectedIntent": "QUERY_STATUS"
+  },
+  {
+    "input": "how is UOS rollout doing",
+    "expectedIntent": "QUERY_STATUS"
+  },
+  {
+    "input": "find fee page",
+    "expectedIntent": "QUERY_FIND"
+  },
+  {
+    "input": "find switch migration SOP",
+    "expectedIntent": "QUERY_FIND"
+  },
+  {
+    "input": "? SEO checklist",
+    "expectedIntent": "QUERY_FIND"
+  },
+  {
+    "input": "? backup script",
+    "expectedIntent": "QUERY_FIND"
+  },
+  {
+    "input": "search admissions portal",
+    "expectedIntent": "QUERY_FIND"
+  },
+  {
+    "input": "find DNS settings",
+    "expectedIntent": "QUERY_FIND"
+  },
+  {
+    "input": "open reports",
+    "expectedIntent": "OPEN"
+  },
+  {
+    "input": "go to Hari's tasks",
+    "expectedIntent": "OPEN"
+  },
+  {
+    "input": "open dev hub",
+    "expectedIntent": "OPEN"
+  },
+  {
+    "input": "go to console",
+    "expectedIntent": "OPEN"
+  },
+  {
+    "input": "open settings",
+    "expectedIntent": "OPEN"
+  },
+  {
+    "input": "go to docs",
+    "expectedIntent": "OPEN"
+  },
+  {
+    "input": "download weekly report for VC",
+    "expectedIntent": "REPORT"
+  },
+  {
+    "input": "export monthly KPI for CEO as excel",
+    "expectedIntent": "REPORT"
+  },
+  {
+    "input": "download weekly pack for COO as pdf",
+    "expectedIntent": "REPORT"
+  },
+  {
+    "input": "generate KPI report as docx",
+    "expectedIntent": "REPORT"
+  },
+  {
+    "input": "JPA for Hari this quarter",
+    "expectedIntent": "REPORT"
+  },
+  {
+    "input": "jpa for Intern Web A",
+    "expectedIntent": "REPORT"
+  },
+  {
+    "input": "download team progress as excel",
+    "expectedIntent": "REPORT"
+  },
+  {
+    "input": "update: done fee page fix; next UOS API; blocker staging access",
+    "expectedIntent": "POST_UPDATE"
+  },
+  {
+    "input": "daily update: completed switch setup; next Wi-Fi; no blockers",
+    "expectedIntent": "POST_UPDATE"
+  },
+  {
+    "input": "update: fixed login bug; testing on prod",
+    "expectedIntent": "POST_UPDATE"
+  },
+  {
+    "input": "daily update: drafted SOP for backup; next restore test",
+    "expectedIntent": "POST_UPDATE"
+  },
+  {
+    "input": "update: finished UI review",
+    "expectedIntent": "POST_UPDATE"
+  },
+  {
+    "input": "daily update: reviewed pull requests",
+    "expectedIntent": "POST_UPDATE"
+  },
+  {
+    "input": "share with Hari: UOS rollout plan, my turn first",
+    "expectedIntent": "SHARED_TASK"
+  },
+  {
+    "input": "share with Dev Web: API spec review, their turn first",
+    "expectedIntent": "SHARED_TASK"
+  },
+  {
+    "input": "Hari and me: domain renewal, their turn",
+    "expectedIntent": "SHARED_TASK"
+  },
+  {
+    "input": "Dev Web and me: database migration, my turn",
+    "expectedIntent": "SHARED_TASK"
+  },
+  {
+    "input": "share with Suresh: lab network audit, my turn",
+    "expectedIntent": "SHARED_TASK"
+  },
+  {
+    "input": "Kiran and me: fiber testing, their turn",
+    "expectedIntent": "SHARED_TASK"
+  },
+  {
+    "input": "pass UOS rollout to Hari",
+    "expectedIntent": "PASS_TURN"
+  },
+  {
+    "input": "pass turn on domain renewal to Dev Web",
+    "expectedIntent": "PASS_TURN"
+  },
+  {
+    "input": "pass switch config to Suresh",
+    "expectedIntent": "PASS_TURN"
+  },
+  {
+    "input": "my turn on domain renewal",
+    "expectedIntent": "PASS_TURN"
+  },
+  {
+    "input": "my turn on UOS rollout",
+    "expectedIntent": "PASS_TURN"
+  },
+  {
+    "input": "pass API review to Hari",
+    "expectedIntent": "PASS_TURN"
+  },
+  {
+    "input": "create team Exam cell support under SMRU lead Hari",
+    "expectedIntent": "CREATE_TEAM"
+  },
+  {
+    "input": "create team Web Dev under Hyderabad lead Sri",
+    "expectedIntent": "CREATE_TEAM"
+  },
+  {
+    "input": "create team Campus Support under Chebrol lead Suresh",
+    "expectedIntent": "CREATE_TEAM"
+  },
+  {
+    "input": "create team Network Ops under Guntur lead Kiran",
+    "expectedIntent": "CREATE_TEAM"
+  },
+  {
+    "input": "create team IT Helpdesk under Women's lead Anusha",
+    "expectedIntent": "CREATE_TEAM"
+  },
+  {
+    "input": "create group admissions-web with Hari and Dev Web",
+    "expectedIntent": "CREATE_GROUP"
+  },
+  {
+    "input": "create channel rollout-alerts with Sri",
+    "expectedIntent": "CREATE_GROUP"
+  },
+  {
+    "input": "create group server-migration with Hari",
+    "expectedIntent": "CREATE_GROUP"
+  },
+  {
+    "input": "create channel exam-coordination",
+    "expectedIntent": "CREATE_GROUP"
+  },
+  {
+    "input": "create group web-interns with Dev Web",
+    "expectedIntent": "CREATE_GROUP"
+  },
+  {
+    "input": "add campus Vijayawada remote",
+    "expectedIntent": "CREATE_CAMPUS"
+  },
+  {
+    "input": "create campus Vizag on-site",
+    "expectedIntent": "CREATE_CAMPUS"
+  },
+  {
+    "input": "add campus Bangalore hub",
+    "expectedIntent": "CREATE_CAMPUS"
+  },
+  {
+    "input": "create campus Tirupati center",
+    "expectedIntent": "CREATE_CAMPUS"
+  },
+  {
+    "input": "add campus Nellore branch",
+    "expectedIntent": "CREATE_CAMPUS"
+  },
+  {
+    "input": "add Intern Web A to Developers",
+    "expectedIntent": "ADD_MEMBER"
+  },
+  {
+    "input": "add Hari to team Campus IT",
+    "expectedIntent": "ADD_MEMBER"
+  },
+  {
+    "input": "add Suresh to team Network Ops",
+    "expectedIntent": "ADD_MEMBER"
+  },
+  {
+    "input": "add Dev Web to team UOS Rollout",
+    "expectedIntent": "ADD_MEMBER"
+  },
+  {
+    "input": "add Kiran to team Support",
+    "expectedIntent": "ADD_MEMBER"
+  },
+  {
+    "input": "meeting with COO office Thursday 12:30",
+    "expectedIntent": "CREATE_EVENT"
+  },
+  {
+    "input": "meeting with VC tomorrow 10am",
+    "expectedIntent": "CREATE_EVENT"
+  },
+  {
+    "input": "schedule meeting with Hari at 3pm",
+    "expectedIntent": "CREATE_EVENT"
+  },
+  {
+    "input": "block 3-5pm for SEO audit",
+    "expectedIntent": "CREATE_EVENT"
+  },
+  {
+    "input": "block 10am-12pm for switch migration",
+    "expectedIntent": "CREATE_EVENT"
+  },
+  {
+    "input": "meeting with CTPL vendor Friday 4pm",
+    "expectedIntent": "CREATE_EVENT"
+  },
+  {
+    "input": "tell #dev-team standup moved to 10:30",
+    "expectedIntent": "MESSAGE"
+  },
+  {
+    "input": "tell #smru-campus-it server rack 4 is live",
+    "expectedIntent": "MESSAGE"
+  },
+  {
+    "input": "tell #general maintenance at 8pm",
+    "expectedIntent": "MESSAGE"
+  },
+  {
+    "input": "message Hari: call me when free",
+    "expectedIntent": "MESSAGE"
+  },
+  {
+    "input": "message Dev Web: check pull request 42",
+    "expectedIntent": "MESSAGE"
+  },
+  {
+    "input": "message Suresh: switch arrived at campus",
+    "expectedIntent": "MESSAGE"
+  },
+  {
+    "input": "move SEO audit to next week",
+    "expectedIntent": "MOVE_DUE"
+  },
+  {
+    "input": "push T-1042 to Friday",
+    "expectedIntent": "MOVE_DUE"
+  },
+  {
+    "input": "reschedule fee page to tomorrow",
+    "expectedIntent": "MOVE_DUE"
+  },
+  {
+    "input": "move T-1001 to Monday",
+    "expectedIntent": "MOVE_DUE"
+  },
+  {
+    "input": "push UOS testing to next week",
+    "expectedIntent": "MOVE_DUE"
+  },
+  {
+    "input": "reschedule backup test to Friday",
+    "expectedIntent": "MOVE_DUE"
+  },
+  {
+    "input": "give fee page to Dev Web",
+    "expectedIntent": "CHANGE_OWNER"
+  },
+  {
+    "input": "reassign T-1042 to Hari",
+    "expectedIntent": "CHANGE_OWNER"
+  },
+  {
+    "input": "give switch migration to Suresh",
+    "expectedIntent": "CHANGE_OWNER"
+  },
+  {
+    "input": "reassign domain renewal to Sri",
+    "expectedIntent": "CHANGE_OWNER"
+  },
+  {
+    "input": "give lab cabling to Kiran",
+    "expectedIntent": "CHANGE_OWNER"
+  },
+  {
+    "input": "reassign T-2005 to Dev Backend",
+    "expectedIntent": "CHANGE_OWNER"
+  },
+  {
+    "input": "fee page is urgent",
+    "expectedIntent": "SET_PRIORITY"
+  },
+  {
+    "input": "make T-1042 low priority",
+    "expectedIntent": "SET_PRIORITY"
+  },
+  {
+    "input": "T-1005 is high priority",
+    "expectedIntent": "SET_PRIORITY"
+  },
+  {
+    "input": "set admissions portal to urgent",
+    "expectedIntent": "SET_PRIORITY"
+  },
+  {
+    "input": "make switch config high priority",
+    "expectedIntent": "SET_PRIORITY"
+  },
+  {
+    "input": "server maintenance is urgent",
+    "expectedIntent": "SET_PRIORITY"
+  },
+  {
+    "input": "delete the old CTPL task",
+    "expectedIntent": "DELETE"
+  },
+  {
+    "input": "remove T-1042",
+    "expectedIntent": "DELETE"
+  },
+  {
+    "input": "delete task T-1088",
+    "expectedIntent": "DELETE"
+  },
+  {
+    "input": "remove duplicate draft",
+    "expectedIntent": "DELETE"
+  },
+  {
+    "input": "delete obsolete test event",
+    "expectedIntent": "DELETE"
+  },
+  {
+    "input": "note on UOS rollout: training venue changed to lab 2",
+    "expectedIntent": "COMMENT"
+  },
+  {
+    "input": "comment on T-1042: checked fiber and ping latency is 2ms",
+    "expectedIntent": "COMMENT"
+  },
+  {
+    "input": "note on fee page: verified payment gateway keys",
+    "expectedIntent": "COMMENT"
+  },
+  {
+    "input": "comment on switch migration: patch panel labeled",
+    "expectedIntent": "COMMENT"
+  },
+  {
+    "input": "note on T-1002: vendor replied with quote",
+    "expectedIntent": "COMMENT"
+  },
+  {
+    "input": "comment on backup script: retention verified for 14 days",
+    "expectedIntent": "COMMENT"
+  },
+  {
+    "input": "fee page is blocked waiting for accounts",
+    "expectedIntent": "UPDATE_STATUS"
+  },
+  {
+    "input": "UOS API is in review",
+    "expectedIntent": "UPDATE_STATUS"
+  },
+  {
+    "input": "switch migration is in progress",
+    "expectedIntent": "UPDATE_STATUS"
+  },
+  {
+    "input": "task T-1042 in review",
+    "expectedIntent": "UPDATE_STATUS"
+  },
+  {
+    "input": "task T-1005 in progress",
+    "expectedIntent": "UPDATE_STATUS"
+  },
+  {
+    "input": "lab cabling is blocked waiting for parts",
+    "expectedIntent": "UPDATE_STATUS"
+  },
+  {
+    "input": "mark T-1042 done",
+    "expectedIntent": "MARK_DONE"
+  },
+  {
+    "input": "done fee page",
+    "expectedIntent": "MARK_DONE"
+  },
+  {
+    "input": "Hari finished the admission form",
+    "expectedIntent": "MARK_DONE"
+  },
+  {
+    "input": "Dev Web finished the login page",
+    "expectedIntent": "MARK_DONE"
+  },
+  {
+    "input": "done switch migration",
+    "expectedIntent": "MARK_DONE"
+  },
+  {
+    "input": "T-1020 done",
+    "expectedIntent": "MARK_DONE"
+  },
+  {
+    "input": "remind Janardhan sir about lab network",
+    "expectedIntent": "FOLLOW_UP"
+  },
+  {
+    "input": "follow up with CTPL on banners",
+    "expectedIntent": "FOLLOW_UP"
+  },
+  {
+    "input": "chase COO office on budget approval",
+    "expectedIntent": "FOLLOW_UP"
+  },
+  {
+    "input": "remind Hari about fiber cables",
+    "expectedIntent": "FOLLOW_UP"
+  },
+  {
+    "input": "chase vendor on switch delivery",
+    "expectedIntent": "FOLLOW_UP"
+  },
+  {
+    "input": "follow up with accounts team about invoice",
+    "expectedIntent": "FOLLOW_UP"
+  },
+  {
+    "input": "ask Hari to fix the admission form by Thursday",
+    "expectedIntent": "ASSIGN_TASK"
+  },
+  {
+    "input": "tell Dev Web to check fee page",
+    "expectedIntent": "ASSIGN_TASK"
+  },
+  {
+    "input": "assign UOS training plan to Hari due Oct 1",
+    "expectedIntent": "ASSIGN_TASK"
+  },
+  {
+    "input": "ask Hari to fix the fee page by Friday, chase daily",
+    "expectedIntent": "ASSIGN_WITH_CHASE"
+  },
+  {
+    "input": "ask Dev Web to update API docs, remind him weekly",
+    "expectedIntent": "ASSIGN_WITH_CHASE"
+  },
+  {
+    "input": "tell Suresh to inspect lab 3 switch, chase every 2 days",
+    "expectedIntent": "ASSIGN_WITH_CHASE"
+  },
+  {
+    "input": "ask Hari to test backup script by tomorrow, chase daily",
+    "expectedIntent": "ASSIGN_WITH_CHASE"
+  },
+  {
+    "input": "assign campus Wi-Fi audit to Kiran due Monday",
+    "expectedIntent": "ASSIGN_TASK"
+  },
+  {
+    "input": "tell Hari to verify DNS records by tonight",
+    "expectedIntent": "ASSIGN_TASK"
+  },
+  {
+    "input": "ask Dev Backend to profile database queries",
+    "expectedIntent": "ASSIGN_TASK"
+  },
+  {
+    "input": "Hari ki cheppu fee page fix cheyyi by Friday",
+    "expectedIntent": "ASSIGN_TASK"
+  },
+  {
+    "input": "Dev Web ki cheppu check server logs",
+    "expectedIntent": "ASSIGN_TASK"
+  },
+  {
+    "input": "Suresh ki cheppu cable crimping cheyyi by tomorrow",
+    "expectedIntent": "ASSIGN_TASK"
+  },
+  {
+    "input": "Hari ki cheppu UOS meeting schedule cheyyi",
+    "expectedIntent": "ASSIGN_TASK"
+  },
+  {
+    "input": "Kiran ki cheppu switch test cheyyi by Monday",
+    "expectedIntent": "ASSIGN_TASK"
+  },
+  {
+    "input": "Hari ki cheppu send report to VC office, chase daily",
+    "expectedIntent": "ASSIGN_WITH_CHASE"
+  },
+  {
+    "input": "Add: VC wants placement report by Monday",
+    "expectedIntent": "ADD_TASK"
+  },
+  {
+    "input": "todo renew smru.in SSL",
+    "expectedIntent": "ADD_TASK"
+  },
+  {
+    "input": "remind me to call CTPL tomorrow 11am",
+    "expectedIntent": "ADD_TASK"
+  },
+  {
+    "input": "Janardhan sir wants lab switch inventory by Friday",
+    "expectedIntent": "ADD_TASK"
+  },
+  {
+    "input": "add test automated restore procedure",
+    "expectedIntent": "ADD_TASK"
+  },
+  {
+    "input": "todo review intern JPA appraisals",
+    "expectedIntent": "ADD_TASK"
+  },
+  {
+    "input": "remind me to inspect server rack 2",
+    "expectedIntent": "ADD_TASK"
+  },
+  {
+    "input": "CEO office wants monthly IT budget summary",
+    "expectedIntent": "ADD_TASK"
+  },
+  {
+    "input": "add prepare slides for quarterly review",
+    "expectedIntent": "ADD_TASK"
+  },
+  {
+    "input": "todo verify SSL certificate on admissions.smru.edu.in",
+    "expectedIntent": "ADD_TASK"
+  },
+  {
+    "input": "remind me to order optical transceiver modules",
+    "expectedIntent": "ADD_TASK"
+  },
+  {
+    "input": "VC wants university website audit by next week",
+    "expectedIntent": "ADD_TASK"
+  }
+]

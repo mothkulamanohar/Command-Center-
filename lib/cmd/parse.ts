@@ -1,92 +1,25 @@
-import { IntentType, ParseResult, CommandSlots } from "./intents";
+import { ParseResult, CommandSlots } from "./intents";
 import { parseDateExpression } from "./dates";
+import { matchQueryAndNav, matchOrgAndComms } from "./parse-helpers";
+import { matchTaskActions } from "./parse-actions";
 
 /**
  * Rule-based Plain-English Command Parser per SPEC §8.2 & §8.3
+ * Recognizes all 27 canonical intents and Tenglish variants.
  */
 export function parseCommand(rawText: string): ParseResult {
   const text = rawText.trim();
   const lower = text.toLowerCase();
 
-  // 1. HELP
-  if (/^(help|\?|what can i type\??)$/i.test(lower)) {
-    return {
-      intent: "HELP",
-      confidence: 1.0,
-      slots: {},
-      preview: "Show Command Center plain-English cheatsheet",
-    };
-  }
+  // 1. Queries and navigation
+  const queryResult = matchQueryAndNav(text, lower);
+  if (queryResult) return queryResult;
 
-  // 2. UNDO
-  if (/^undo$/i.test(lower)) {
-    return {
-      intent: "UNDO",
-      confidence: 1.0,
-      slots: {},
-      preview: "Undo last command (within 10 minutes)",
-    };
-  }
+  // 2. Org, Comms, and Events
+  const orgResult = matchOrgAndComms(text, lower);
+  if (orgResult) return orgResult;
 
-  // 3. QUERY_DAY
-  if (/^(what'?s my day\??|today|what'?s due today|what'?s due tomorrow)$/i.test(lower)) {
-    return {
-      intent: "QUERY_DAY",
-      confidence: 0.95,
-      slots: { query: text },
-      preview: "Show today's schedule, items you owe, and follow-ups going out",
-    };
-  }
-
-  // 4. QUERY_CHASING
-  if (/^what (am i chasing|does .+ owe me)\??$/i.test(lower)) {
-    return {
-      intent: "QUERY_CHASING",
-      confidence: 0.95,
-      slots: { query: text },
-      preview: "List open tasks you are chasing from others",
-    };
-  }
-
-  // 5. QUERY_FIND
-  if (lower.startsWith("find ") || lower.startsWith("? ")) {
-    const q = text.replace(/^(find|\?)\s+/i, "");
-    return {
-      intent: "QUERY_FIND",
-      confidence: 0.95,
-      slots: { query: q },
-      preview: `Search for '${q}' across tasks, docs, and messages`,
-    };
-  }
-
-  // 6. MARK_DONE
-  const doneMatch =
-    text.match(/^(?:mark\s+)?(T-\d+)\s+done$/i) ||
-    text.match(/^done\s+(.+)$/i) ||
-    text.match(/^(.+?)\s+finished\s+(.+)$/i);
-  if (doneMatch) {
-    const ref = doneMatch[1]?.startsWith("T-") ? doneMatch[1] : undefined;
-    const title = ref ? undefined : doneMatch[1];
-    return {
-      intent: "MARK_DONE",
-      confidence: 0.95,
-      slots: { taskRef: ref, title },
-      preview: `Mark ${ref || title} as DONE`,
-    };
-  }
-
-  // 7. REPORT
-  const reportMatch = text.match(/(?:download|export|generate)\s+(.+?)(?:\s+as\s+(pdf|excel|docx))?$/i);
-  if (reportMatch || /jpa for/i.test(lower)) {
-    return {
-      intent: "REPORT",
-      confidence: 0.9,
-      slots: { text },
-      preview: `Generate report: ${text}`,
-    };
-  }
-
-  // 8. POST_UPDATE
+  // 3. Daily Update (must precede task actions so 'update: finished ...' is POST_UPDATE)
   if (lower.startsWith("update:") || lower.startsWith("daily update:")) {
     return {
       intent: "POST_UPDATE",
@@ -96,27 +29,67 @@ export function parseCommand(rawText: string): ParseResult {
     };
   }
 
-  // 9. ASSIGN_TASK & ASSIGN_WITH_CHASE
-  const assignMatch = text.match(/^(?:ask|tell|assign)\s+([a-zA-Z\s]+?)\s+to\s+(.+)$/i);
+  // 4. Task mutations, status, priority, comments, and marks
+  const actionResult = matchTaskActions(text);
+  if (actionResult) return actionResult;
+
+  // 5. Reports
+  const reportMatch = text.match(/(?:download|export|generate)\s+(.+?)(?:\s+as\s+(pdf|excel|xlsx|docx))?$/i);
+  if (reportMatch || /jpa for/i.test(lower)) {
+    return {
+      intent: "REPORT",
+      confidence: 0.92,
+      slots: { text },
+      preview: `Generate report: ${text}`,
+    };
+  }
+
+  // 6. Assign syntax: "assign <task> to <person> [due <date>]"
+  const assignToMatch = text.match(/^assign\s+(.+?)\s+to\s+([a-zA-Z\s]+?)(?:\s+(?:due|by)\s+([^,]+))?$/i);
+  if (assignToMatch && assignToMatch[1] && assignToMatch[2]) {
+    const title = assignToMatch[1].trim();
+    const owner = assignToMatch[2].trim();
+    let due: Date | null = null;
+    if (assignToMatch[3]) {
+      const parsedDate = parseDateExpression(assignToMatch[3].trim());
+      due = parsedDate.date;
+    }
+    return {
+      intent: "ASSIGN_TASK",
+      confidence: 0.91,
+      slots: { title, owner, due },
+      preview: `Assign '${title}' to ${owner}${due ? ` due ${due.toISOString()}` : ""}`,
+    };
+  }
+
+  // 7. Assign syntax: "ask/tell <person> to <task>" or Tenglish "<person> ki cheppu <task>"
+  const assignMatch =
+    text.match(/^(?:ask|tell)\s+([a-zA-Z\s]+?)\s+to\s+(.+)$/i) ||
+    text.match(/^([a-zA-Z\s]+?)\s+ki\s+cheppu\s+(.+)$/i);
+
   if (assignMatch && assignMatch[1] && assignMatch[2]) {
     const owner = assignMatch[1].trim();
     let remainder = assignMatch[2].trim();
 
-    // Check cadence
     let cadence: CommandSlots["cadence"] = undefined;
+    let everyNDays: number | undefined = undefined;
+
     if (/chase daily/i.test(remainder)) {
       cadence = "DAILY";
       remainder = remainder.replace(/\s*,?\s*chase daily/i, "");
     } else if (/remind (?:him|her|them) weekly/i.test(remainder)) {
       cadence = "WEEKLY";
       remainder = remainder.replace(/\s*,?\s*remind (?:him|her|them) weekly/i, "");
+    } else if (/(?:chase|remind)\s+every\s+(\d+)\s+days/i.test(remainder)) {
+      const matchDays = remainder.match(/(?:chase|remind)\s+every\s+(\d+)\s+days/i);
+      cadence = "EVERY_N_DAYS";
+      everyNDays = matchDays && matchDays[1] ? parseInt(matchDays[1], 10) : 2;
+      remainder = remainder.replace(/\s*,?\s*(?:chase|remind)\s+every\s+\d+\s+days/i, "");
     }
 
-    // Check approval
     const needsApproval = /ask me first/i.test(remainder);
     remainder = remainder.replace(/\s*,?\s*ask me first/i, "");
 
-    // Check due date
     let due: Date | null = null;
     const dueMatch = remainder.match(/\s+(?:by|due|before)\s+([^,]+)$/i);
     if (dueMatch && dueMatch[1]) {
@@ -135,13 +108,14 @@ export function parseCommand(rawText: string): ParseResult {
         owner,
         due,
         cadence,
+        everyNDays,
         needsApproval,
       },
       preview: `Assign '${remainder}' to ${owner}${due ? ` due ${due.toISOString()}` : ""}${cadence ? ` (chase ${cadence.toLowerCase()})` : ""}`,
     };
   }
 
-  // 10. FOLLOW_UP
+  // 8. Standalone Follow-up
   const chaseMatch = text.match(/^(?:remind|follow up with|chase)\s+([a-zA-Z\s]+?)\s+(?:on|about)\s+(.+)$/i);
   if (chaseMatch && chaseMatch[1] && chaseMatch[2]) {
     return {
@@ -155,33 +129,7 @@ export function parseCommand(rawText: string): ParseResult {
     };
   }
 
-  // 11. PASS_TURN
-  const passMatch = text.match(/^pass\s+(.+?)\s+to\s+(.+)$/i);
-  if (passMatch && passMatch[1] && passMatch[2]) {
-    return {
-      intent: "PASS_TURN",
-      confidence: 0.9,
-      slots: { title: passMatch[1].trim(), targetUser: passMatch[2].trim() },
-      preview: `Pass turn on '${passMatch[1].trim()}' to ${passMatch[2].trim()}`,
-    };
-  }
-
-  // 12. CREATE_TEAM
-  const createTeamMatch = text.match(/^create\s+team\s+(.+?)\s+under\s+(.+?)\s+lead\s+(.+)$/i);
-  if (createTeamMatch && createTeamMatch[1] && createTeamMatch[2] && createTeamMatch[3]) {
-    return {
-      intent: "CREATE_TEAM",
-      confidence: 0.92,
-      slots: {
-        team: createTeamMatch[1].trim(),
-        campus: createTeamMatch[2].trim(),
-        owner: createTeamMatch[3].trim(),
-      },
-      preview: `Create team '${createTeamMatch[1].trim()}' in campus '${createTeamMatch[2].trim()}' lead by ${createTeamMatch[3].trim()}`,
-    };
-  }
-
-  // 13. ADD_TASK fallback ("Add: ...", "todo ...", or general sentence)
+  // 9. ADD_TASK fallback
   let taskTitle = text;
   let requesterName: string | undefined;
 
@@ -190,14 +138,12 @@ export function parseCommand(rawText: string): ParseResult {
     taskTitle = addPrefixMatch[1].trim();
   }
 
-  // Check "X wants Y" pattern per SPEC §8.3
   const wantsMatch = taskTitle.match(/^([a-zA-Z\s]+?)\s+wants\s+(.+)$/i);
   if (wantsMatch && wantsMatch[1] && wantsMatch[2]) {
     requesterName = wantsMatch[1].trim();
     taskTitle = wantsMatch[2].trim();
   }
 
-  // Parse due date if present
   let due: Date | null = null;
   const dueMatch = taskTitle.match(/\s+(?:by|before|due)\s+([^,]+)$/i);
   if (dueMatch && dueMatch[1]) {

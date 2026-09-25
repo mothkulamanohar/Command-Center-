@@ -28,7 +28,10 @@ export interface UserContext {
   role: RoleKey;
   teamIds?: string[];
   ledTeamIds?: string[];
+  name?: string | null;
 }
+
+export type AuthUser = UserContext;
 
 export interface ResourceContext {
   ownerId?: string;

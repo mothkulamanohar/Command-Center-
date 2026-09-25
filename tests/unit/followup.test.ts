@@ -35,9 +35,9 @@ describe("Follow-up Engine (F-FU)", () => {
   it("calculates next run accurately for DAILY cadence", () => {
     const next = calculateNextRun(FUCadence.DAILY);
     const now = new Date();
-    // Next run should be roughly 1 day ahead
+    // Next run at 09:30 tomorrow is between 8 and 36 hours from now
     const diffHours = (next.getTime() - now.getTime()) / (1000 * 60 * 60);
-    expect(diffHours).toBeGreaterThan(12);
+    expect(diffHours).toBeGreaterThan(8);
     expect(diffHours).toBeLessThan(36);
   });
 
@@ -45,7 +45,7 @@ describe("Follow-up Engine (F-FU)", () => {
     const next = calculateNextRun(FUCadence.EVERY_N_DAYS, 3);
     const now = new Date();
     const diffHours = (next.getTime() - now.getTime()) / (1000 * 60 * 60);
-    expect(diffHours).toBeGreaterThan(60);
+    expect(diffHours).toBeGreaterThan(56);
     expect(diffHours).toBeLessThan(84);
   });
 
@@ -53,7 +53,7 @@ describe("Follow-up Engine (F-FU)", () => {
     const next = calculateNextRun(FUCadence.WEEKLY);
     const now = new Date();
     const diffHours = (next.getTime() - now.getTime()) / (1000 * 60 * 60);
-    expect(diffHours).toBeGreaterThan(150);
+    expect(diffHours).toBeGreaterThan(140);
     expect(diffHours).toBeLessThan(180);
   });
 });

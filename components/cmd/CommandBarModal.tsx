@@ -23,8 +23,20 @@ export function CommandBarModal() {
         setIsOpen(false);
       }
     };
+    const handleOpen = (e: Event) => {
+      const customEvent = e as CustomEvent<{ query?: string }>;
+      if (customEvent?.detail?.query) {
+        setInput(customEvent.detail.query);
+      }
+      setIsOpen(true);
+    };
+
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener("open-command-bar", handleOpen);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("open-command-bar", handleOpen);
+    };
   }, [isOpen]);
 
   useEffect(() => {

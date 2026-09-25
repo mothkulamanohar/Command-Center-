@@ -55,10 +55,16 @@ services:
   backup:
     image: postgres:16
     restart: unless-stopped
-    command: /bin/sh -c "while true; do sleep 86400; done"
+    command: /bin/sh /backup.sh
     volumes:
       - backups:/backups
       - data:/data:ro
+      - ./backup.sh:/backup.sh:ro
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_USER: icc
+      POSTGRES_PASSWORD: icc
+      POSTGRES_DB: icc
     depends_on:
       db:
         condition: service_healthy
