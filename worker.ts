@@ -2,6 +2,8 @@ import PgBoss from "pg-boss";
 import dotenv from "dotenv";
 import { db } from "./lib/db";
 import { calculateNextRun, checkEscalation } from "./lib/services/followup";
+import { carryOverUndoneTodos } from "./lib/services/todo";
+import { autoStopRunningTimers } from "./lib/services/timelog";
 
 dotenv.config();
 
@@ -36,7 +38,6 @@ async function startWorker() {
       });
 
       for (const fu of pending) {
-        // Increment sent count and check escalation
         await db.followUp.update({
           where: { id: fu.id },
           data: {
@@ -66,7 +67,54 @@ async function startWorker() {
       console.log("Running sites uptime ping...");
     });
 
-    console.log("Registered background job listeners: followups.tick, updates.remind, brief.morning, uptime.check");
+    // ==================== v1.1 Jobs (SPEC §17) ====================
+
+    // 5. To-do carry-over (daily 00:05)
+    await boss.work("todo.carryOver", async () => {
+      console.log("Running daily todo carry-over job...");
+      await carryOverUndoneTodos();
+    });
+
+    // 6. Timers auto-stop (daily 18:30 IST)
+    await boss.work("timers.autoStop", async () => {
+      console.log("Auto-stopping running timers at 18:30 IST...");
+      await autoStopRunningTimers();
+    });
+
+    // 7. Attendance check-in reminder (09:10 working days)
+    await boss.work("attendance.remindIn", async () => {
+      console.log("Dispatching attendance check-in reminders (09:10 IST)...");
+    });
+
+    // 8. Attendance mark provisional absent (11:00 working days)
+    await boss.work("attendance.markAbsent", async () => {
+      console.log("Marking provisional absent records for users without check-in...");
+    });
+
+    // 9. Attendance check-out reminder (18:15 working days)
+    await boss.work("attendance.remindOut", async () => {
+      console.log("Dispatching check-out reminder to active sessions (18:15 IST)...");
+    });
+
+    // 10. Attendance auto-close (23:59 daily)
+    await boss.work("attendance.autoClose", async () => {
+      console.log("Auto-closing remaining unclosed attendance sessions...");
+    });
+
+    // 11. Feedback lock older than 24h
+    await boss.work("feedback.lock", async () => {
+      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      await db.taskFeedback.updateMany({
+        where: {
+          lockedAt: null,
+          createdAt: { lte: yesterday },
+        },
+        data: { lockedAt: new Date() },
+      });
+      console.log("Locked feedback older than 24h.");
+    });
+
+    console.log("Registered all background job listeners including v1.1 jobs.");
   } catch (err) {
     console.warn("Could not connect to database for background worker (will retry on DB availability):", err);
   }

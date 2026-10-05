@@ -1,89 +1,48 @@
 "use client";
 
-import { useState } from "react";
-import { FileText, Plus, Folder, Search, Sparkles, BookOpen } from "lucide-react";
+import { useState, useEffect } from "react";
+import { toast } from "sonner";
+import { FileText, Plus, Folder, Search, Sparkles, BookOpen, CheckCircle2 } from "lucide-react";
 import { DocViewerModal, DocItem } from "@/components/docs/DocViewerModal";
-
-const INITIAL_DOCS: DocItem[] = [
-  {
-    id: "d-1",
-    title: "SOP: Campus Core Switch Migration & VLAN Config",
-    spaceName: "SMRU Campus IT",
-    template: "SOP",
-    authorName: "Sri (IT Manager)",
-    updatedAt: "22 Sep 2026",
-    content: `# Standard Operating Procedure: Switch Migration
-
-## 1. Objective
-Ensure zero-downtime cutover of 48-port Cisco access switches in SMRU Main Server Room.
-
-## 2. Prerequisites
-- Backup running configuration to local TFTP.
-- Verify uplink fiber patch cable signal dBm level.
-- Label all trunk and edge patch cables before disconnection.
-
-## 3. Execution Steps
-1. Power up replacement switch on rack unit 14.
-2. Load baseline VLAN config (VLAN 10 Admin, 20 Faculty, 30 Labs, 40 Wi-Fi).
-3. Connect primary fiber trunk to GigabitEthernet0/1.
-4. Verify STP topology convergence (no root bridge loops).
-5. Migrate patch cables sequentially by port grouping.
-6. Test ping reachability to gateway and core DNS.`,
-  },
-  {
-    id: "d-2",
-    title: "Incident Postmortem: DNS TTL Propagation Delay",
-    spaceName: "Org Space",
-    template: "Incident Report",
-    authorName: "Hari (Coordinator)",
-    updatedAt: "20 Sep 2026",
-    content: `# Incident Report: DNS Propagation Delay
-
-## Date & Severity
-- Date: 19 Sep 2026
-- Severity: Medium
-- Resolution Time: 42 minutes
-
-## Summary
-Subdomain 'admissions.smru.edu.in' experienced intermittent resolution failures following an A-record IP change due to high TTL (86400s) on external resolvers.
-
-## Root Cause
-TTL had not been reduced to 300s 48 hours prior to migration.
-
-## Corrective Actions
-- Updated standard DNS change SOP to require 300s TTL 48 hours prior to all planned cutovers.`,
-  },
-  {
-    id: "d-3",
-    title: "Dev Setup & Architecture: Command Center",
-    spaceName: "Developers",
-    template: "Project Brief",
-    authorName: "Dev · Web",
-    updatedAt: "24 Sep 2026",
-    content: `# Command Center Architecture & Setup Guide
-
-## Technology Stack
-- Next.js 15 App Router
-- PostgreSQL with Prisma ORM
-- Socket.IO Real-time Rooms
-- pg-boss Background Jobs
-- Local Ollama AI Fallback
-
-## Running Locally
-1. docker compose up -d postgres
-2. npm run db:push && npm run db:seed
-3. npm run dev`,
-  },
-];
+import { formatNotificationTime, formatOrgDate } from "@/lib/time";
+import {
+  getDocsAction,
+  getDocSpacesAction,
+  createDocAction,
+  saveDocAction,
+} from "./actions";
 
 export default function DocsPage() {
-  const [docs, setDocs] = useState<DocItem[]>(INITIAL_DOCS);
+  const [docs, setDocs] = useState<DocItem[]>([]);
+  const [spacesList, setSpacesList] = useState<string[]>(["ALL"]);
   const [selectedSpace, setSelectedSpace] = useState<string>("ALL");
   const [search, setSearch] = useState("");
   const [activeDoc, setActiveDoc] = useState<DocItem | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const spaces = ["ALL", "Org Space", "SMRU Campus IT", "Developers"];
+  const loadData = async () => {
+    const [spacesRes, docsRes] = await Promise.all([
+      getDocSpacesAction(),
+      getDocsAction(selectedSpace, search),
+    ]);
+
+    if (spacesRes.success && spacesRes.data) {
+      const sps = ["ALL", ...spacesRes.data.map((s: any) => s.name)];
+      setSpacesList(Array.from(new Set(sps)));
+    }
+
+    if (docsRes.success && docsRes.data) {
+      setDocs(docsRes.data as any);
+    }
+    setIsLoading(false);
+  };
+
+  useEffect(() => {
+    loadData();
+  }, [selectedSpace]);
+
+  const spaces = spacesList;
 
   const filteredDocs = docs.filter((d) => {
     const matchesSpace = selectedSpace === "ALL" || d.spaceName === selectedSpace;
@@ -98,30 +57,54 @@ export default function DocsPage() {
     setIsModalOpen(true);
   };
 
-  const handleSaveDoc = (id: string, newTitle: string, newContent: string) => {
-    setDocs((prev) =>
-      prev.map((d) =>
-        d.id === id ? { ...d, title: newTitle, content: newContent, updatedAt: "Just now" } : d
-      )
-    );
+  const handleSaveDoc = async (id: string, newTitle: string, newContent: string) => {
+    const res = await saveDocAction({
+      id,
+      title: newTitle,
+      content: newContent,
+    });
+
+    if (res.success) {
+      toast.success(`Document "${newTitle}" saved successfully.`);
+      loadData();
+      setActiveDoc((prev) => (prev && prev.id === id ? { ...prev, title: newTitle, content: newContent } : prev));
+    } else {
+      toast.error(res.error || "Failed to save document");
+    }
   };
 
-  const handleCreateDoc = () => {
-    const newDoc: DocItem = {
-      id: `doc-${Date.now()}`,
-      title: "New Document Draft",
-      spaceName: selectedSpace === "ALL" ? "Org Space" : selectedSpace,
-      authorName: "Sri",
-      updatedAt: "Just now",
-      content: "# New Document\n\nEnter content here...",
-    };
-    setDocs([newDoc, ...docs]);
-    setActiveDoc(newDoc);
-    setIsModalOpen(true);
+  const [isCreating, setIsCreating] = useState(false);
+
+  const handleCreateDoc = async () => {
+    if (isCreating) return;
+    setIsCreating(true);
+
+    try {
+      const res = await createDocAction({
+        spaceId: selectedSpace,
+        title: "New Document Draft",
+        content: "# New Document\n\nEnter content here...",
+      });
+
+      if (res.success && res.data) {
+        toast.success("Created new document draft.");
+        loadData();
+        setActiveDoc(res.data as any);
+        setIsModalOpen(true);
+      } else {
+        toast.error(res.error || "Failed to create document");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to create document");
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   return (
     <div className="space-y-6">
+      
+
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -132,11 +115,21 @@ export default function DocsPage() {
         </div>
         <button
           type="button"
+          disabled={isCreating}
           onClick={handleCreateDoc}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary hover:bg-primary-hover text-white rounded-control text-xs font-medium transition-colors shadow-2xs"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary hover:bg-primary-hover text-white rounded-control text-xs font-medium transition-colors shadow-2xs disabled:opacity-60 cursor-pointer"
         >
-          <Plus className="h-3.5 w-3.5" />
-          <span>New Doc</span>
+          {isCreating ? (
+            <>
+              <span className="h-3.5 w-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              <span>Creating...</span>
+            </>
+          ) : (
+            <>
+              <Plus className="h-3.5 w-3.5" />
+              <span>New Document</span>
+            </>
+          )}
         </button>
       </div>
 

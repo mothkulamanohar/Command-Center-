@@ -30,6 +30,20 @@ export const IntentKeys = [
   "OPEN",
   "UNDO",
   "HELP",
+  // v1.1 Intents (SPEC §8.3)
+  "ADD_TODO",
+  "SCHEDULE_TODO",
+  "DONE_TODO",
+  "SET_ESTIMATE",
+  "START_TIMER",
+  "STOP_TIMER",
+  "LOG_TIME",
+  "CHECK_IN",
+  "CHECK_OUT",
+  "APPLY_LEAVE",
+  "QUERY_ATTENDANCE",
+  "GIVE_FEEDBACK",
+  "ISSUE_CERTIFICATE",
 ] as const;
 
 export type IntentType = typeof IntentKeys[number];
@@ -40,6 +54,8 @@ export interface CommandSlots {
   requester?: string;
   requesterName?: string;
   due?: Date | string | null;
+  start?: Date | string | null; // v1.1
+  end?: Date | string | null; // v1.1
   cadence?: "ONCE" | "DAILY" | "EVERY_N_DAYS" | "WEEKLY" | "BEFORE_DUE" | "AFTER_DUE";
   everyNDays?: number;
   needsApproval?: boolean;
@@ -55,11 +71,14 @@ export interface CommandSlots {
   nextNotes?: string;
   blockerNotes?: string;
   targetUser?: string;
+  durationMinutes?: number | null; // v1.1
+  rating?: number | null; // v1.1
+  mode?: string | null; // v1.1
 }
 
 export interface ParseResult {
   intent: IntentType;
-  confidence: number;
   slots: CommandSlots;
-  preview: string;
+  confidence: number;
+  preview?: string;
 }

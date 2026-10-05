@@ -14,3 +14,11 @@
 13. After each step: run typecheck, lint, tests; show me the result.
 14. Never delete or rewrite working code outside the feature scope.
 15. If stuck twice on the same error, stop and explain the problem in plain English.
+16. (v1.1) The v1.0 app is live. Schema changes must be additive: no dropped or renamed
+    columns. Show the Prisma diff and migration name in the plan before running it.
+17. (v1.1) Before and after each Phase 7 feature, run the full test suite and e2e flows 1–6.
+    If an old test breaks, fix the new code, not the old test (unless SPEC changed it).
+18. (v1.1) Attendance, feedback and certificate logic are privacy-sensitive: follow the
+    visibility rules in SPEC §3.2, §7.5, §10.5 and §13.6 exactly. Never log locations,
+    feedback comments or certificate codes in plain application logs.
+19. (v1.1) The only route without login is /verify. Never add another public route.

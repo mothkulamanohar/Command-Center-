@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { getSessionUser } from "@/lib/auth/session";
 import fs from "fs/promises";
 import path from "path";
 
@@ -8,11 +9,12 @@ const MAX_SIZE_BYTES = 25 * 1024 * 1024; // 25 MB per SPEC F-CHAT-04
 
 export async function POST(req: Request) {
   try {
+    const user = await getSessionUser();
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
     const ownerType = (formData.get("ownerType") as string) || "MESSAGE";
     const ownerId = (formData.get("ownerId") as string) || "general";
-    const uploadedById = (formData.get("uploadedById") as string) || "u_sri";
+    const uploadedById = (formData.get("uploadedById") as string) || user?.id || "system";
 
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });

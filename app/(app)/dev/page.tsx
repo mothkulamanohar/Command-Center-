@@ -1,127 +1,89 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import { SitesRegistryTable, SiteItem } from "@/components/dev/SitesRegistryTable";
 import { BuildMapTable, BuildMapItem } from "@/components/dev/BuildMapTable";
 import { BugTrackerModal } from "@/components/dev/BugTrackerModal";
-import { Globe, Code2, Bug, Rocket, Plus, CheckCircle2 } from "lucide-react";
-
-const INITIAL_SITES: SiteItem[] = [
-  {
-    id: "s-1",
-    domain: "smru.edu.in",
-    url: "https://smru.edu.in",
-    hosting: "Dedicated Host",
-    dns: "Cloudflare",
-    sslDaysRemaining: 74,
-    lastStatus: "UP",
-    uptimePercent: 99.98,
-    lastCheckedAt: "2 min ago",
-  },
-  {
-    id: "s-2",
-    domain: "smru.in",
-    url: "https://smru.in",
-    hosting: "Vercel",
-    dns: "Route53",
-    sslDaysRemaining: 18, // Warning < 30 days
-    lastStatus: "UP",
-    uptimePercent: 99.95,
-    lastCheckedAt: "4 min ago",
-  },
-  {
-    id: "s-3",
-    domain: "womens.smru.edu.in",
-    url: "https://womens.smru.edu.in",
-    hosting: "Campus Server",
-    dns: "Local DNS",
-    sslDaysRemaining: 5, // Critical < 7 days
-    lastStatus: "UP",
-    uptimePercent: 98.80,
-    lastCheckedAt: "Just now",
-  },
-  {
-    id: "s-4",
-    domain: "chebrol.smru.edu.in",
-    url: "https://chebrol.smru.edu.in",
-    hosting: "Campus Server",
-    dns: "Local DNS",
-    sslDaysRemaining: 120,
-    lastStatus: "UP",
-    uptimePercent: 99.90,
-    lastCheckedAt: "3 min ago",
-  },
-];
-
-const INITIAL_BUILD_MAP: BuildMapItem[] = [
-  {
-    id: "b-1",
-    developerName: "Dev · Web",
-    projectName: "Command Center",
-    featureTitle: "Team Links Board & Auto URL extraction",
-    stack: "Next.js 15 · Tailwind · Prisma",
-    status: "IN_REVIEW",
-    startedAt: "22 Sep",
-    expectedAt: "25 Sep",
-  },
-  {
-    id: "b-2",
-    developerName: "Dev · Backend",
-    projectName: "UOS Rollout",
-    featureTitle: "Attendance punch sync background daemon",
-    stack: "Node.js · PostgreSQL · pg-boss",
-    status: "IN_PROGRESS",
-    startedAt: "23 Sep",
-    expectedAt: "26 Sep",
-  },
-  {
-    id: "b-3",
-    developerName: "Dev · Web",
-    projectName: "Admissions Portal",
-    featureTitle: "Seat allotment letter PDF generation",
-    stack: "Next.js · Playwright",
-    status: "TODO",
-    startedAt: "24 Sep",
-    expectedAt: "28 Sep",
-  },
-];
+import { Globe, Code2, Bug, CheckCircle2 } from "lucide-react";
+import { createBugReportAction, getBuildMapAction, getSitesAction } from "./actions";
 
 export default function DevHubPage() {
   const [activeTab, setActiveTab] = useState<"sites" | "buildmap" | "bugs">("sites");
-  const [sites, setSites] = useState<SiteItem[]>(INITIAL_SITES);
-  const [buildMap, setBuildMap] = useState<BuildMapItem[]>(INITIAL_BUILD_MAP);
+  const [sites, setSites] = useState<SiteItem[]>([]);
+  const [buildMap, setBuildMap] = useState<BuildMapItem[]>([]);
   const [isBugModalOpen, setIsBugModalOpen] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
 
-  const showToast = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(null), 3000);
+  useEffect(() => {
+    getSitesAction().then((res) => {
+      if (res.success && res.data) {
+        setSites(res.data as SiteItem[]);
+      }
+    });
+
+    getBuildMapAction().then((res) => {
+      if (res.success && res.data) {
+        setBuildMap(res.data as BuildMapItem[]);
+      }
+    });
+  }, []);
+
+  const handlePing = async (id: string) => {
+    const site = sites.find((s) => s.id === id);
+    if (!site) return;
+
+    try {
+      const res = await fetch(`/api/dev/ping?url=${encodeURIComponent(site.url)}`);
+      const data = await res.json();
+      const isUp = Boolean(data.ok);
+      const statusStr = isUp ? "UP" : "DOWN";
+
+      setSites((prev) =>
+        prev.map((s) =>
+          s.id === id
+            ? {
+                ...s,
+                lastStatus: statusStr,
+                lastCheckedAt: "Just now",
+              }
+            : s
+        )
+      );
+
+      if (isUp) {
+        toast.success(`HTTP check passed (${data.status || 200} OK, ${data.latencyMs}ms)`);
+      } else {
+        toast.success(`HTTP check failed (${data.error || "Offline"})`);
+      }
+    } catch {
+      toast.success("Ping request failed to complete");
+    }
   };
 
-  const handlePing = (id: string) => {
-    setSites((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, lastStatus: "UP", lastCheckedAt: "Just now" } : s))
-    );
-    showToast("HTTP check passed (200 OK, 124ms)");
-  };
-
-  const handleBugSubmit = (data: {
+  const handleBugSubmit = async (data: {
     title: string;
     steps: string;
     severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
     project: string;
   }) => {
-    showToast(`Bug logged: "${data.title}" · Task created in TODO`);
+    const res = await createBugReportAction({
+      title: data.title,
+      steps: data.steps,
+      severity: data.severity,
+      project: data.project,
+    });
+
+    if (res.success) {
+      setIsBugModalOpen(false);
+      toast.success(`Bug logged: "${data.title}" · Bug and task created`);
+    } else {
+      toast.error(res.error || "Failed to log bug");
+    }
   };
 
   return (
     <div className="space-y-6">
-      {toast && (
-        <div className="fixed bottom-6 right-6 z-50 bg-ink text-surface px-4 py-2.5 rounded-control text-xs font-medium shadow-panel border border-line flex items-center gap-2 animate-in fade-in">
-          <CheckCircle2 className="h-4 w-4 text-primary" />
-          <span>{toast}</span>
-        </div>
-      )}
+      
 
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

@@ -34,3 +34,31 @@ export function formatOrgDate(date: Date | string | number): string {
 export function formatOrgTimeOnly(date: Date | string | number): string {
   return formatOrgTime(date, "HH:mm");
 }
+
+/**
+ * Format notification timestamp into user-friendly localized time
+ * E.g., "Today, 11:35 AM" or "01 Oct, 11:35 AM"
+ */
+export function formatNotificationTime(date?: Date | string | number | null): string {
+  if (!date) {
+    return `Today, ${formatOrgTime(new Date(), "hh:mm a")}`;
+  }
+  const d = typeof date === "string" || typeof date === "number" ? new Date(date) : date;
+  if (isNaN(d.getTime())) {
+    return `Today, ${formatOrgTime(new Date(), "hh:mm a")}`;
+  }
+
+  try {
+    const now = new Date();
+    const dateStr = formatInTimeZone(d, ORG_TIMEZONE, "yyyy-MM-dd");
+    const nowStr = formatInTimeZone(now, ORG_TIMEZONE, "yyyy-MM-dd");
+    const timeStr = formatInTimeZone(d, ORG_TIMEZONE, "hh:mm a");
+
+    if (dateStr === nowStr) {
+      return `Today, ${timeStr}`;
+    }
+    return formatInTimeZone(d, ORG_TIMEZONE, "dd MMM, hh:mm a");
+  } catch {
+    return formatOrgTime(d, "dd MMM, hh:mm a");
+  }
+}

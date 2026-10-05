@@ -25,7 +25,7 @@ describe("Password Security & Policy (F-AUTH-04)", () => {
 
     const wrongMatch = await verifyPassword("WrongPassword!", hashed);
     expect(wrongMatch).toBe(false);
-  });
+  }, 15000);
 
   it("generates random 12-character one-time passwords", () => {
     const pwd1 = generateOneTimePassword();

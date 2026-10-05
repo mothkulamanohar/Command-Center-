@@ -47,6 +47,7 @@ enum TaskSource {
   RECURRING
   UPDATE
   MEETING
+  TODO // v1.1: created from a to-do
 }
 
 enum RequestState {
@@ -117,36 +118,103 @@ enum ReportFormat {
   CSV
 }
 
+// ---------- v1.1 enums ----------
+enum FeedbackState { // v1.1
+  NONE
+  PENDING
+  GIVEN
+  REWORK
+}
+
+enum FeedbackOutcome { // v1.1
+  ACCEPTED
+  REWORK
+}
+
+enum AttendanceStatus { // v1.1
+  PRESENT
+  LATE
+  HALF_DAY
+  ABSENT
+  ON_LEAVE
+  HOLIDAY
+  WEEK_OFF
+}
+
+enum WorkMode { // v1.1
+  OFFICE
+  CAMPUS
+  REMOTE
+  FIELD
+}
+
+enum ApprovalState { // v1.1: regularisation and leave
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum LeaveType { // v1.1
+  CASUAL
+  SICK
+  EARNED
+  COMP_OFF
+  OTHER
+}
+
+enum TimeLogSource { // v1.1
+  TIMER
+  MANUAL
+}
+
+enum CertKind { // v1.1
+  INTERNSHIP_COMPLETION
+  APPRECIATION
+  PARTICIPATION
+  EXPERIENCE
+  CUSTOM
+}
+
+enum CertState { // v1.1
+  DRAFT
+  PROPOSED
+  ISSUED
+  REVOKED
+  REPLACED
+}
+
 model User {
-  id            String   @id @default(cuid())
-  name          String
-  displayName   String?
-  email         String   @unique
-  phone         String?
-  passwordHash  String
-  mustChangePw  Boolean  @default(true)
-  role          RoleKey  @default(MEMBER)
-  title         String?            // "IT Coordinator"
-  honorific     String?            // "sir", "madam" for follow-up tone
-  aliases       String[]           // "Hari", "Hari garu"
-  avatarUrl     String?
-  campusId      String?
-  campus        Campus?  @relation(fields: [campusId], references: [id])
-  isSenior      Boolean  @default(false) // approval mode always
-  active        Boolean  @default(true)
-  startDate     DateTime?
-  endDate       DateTime?
-  quietFrom     String   @default("21:00")
-  quietTo       String   @default("08:00")
-  failedLogins  Int      @default(0)
-  lockedUntil   DateTime?
-  lastSeenAt    DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  memberships   TeamMember[]
-  ownedTasks    Task[]   @relation("owner")
-  pushSubs      PushSubscription[]
-  notifPrefs    Json     @default("{}")
+  id              String             @id @default(cuid())
+  name            String
+  displayName     String?
+  email           String             @unique
+  phone           String?
+  passwordHash    String
+  mustChangePw    Boolean            @default(true)
+  role            RoleKey            @default(MEMBER)
+  title           String? // "IT Coordinator"
+  honorific       String? // "sir", "madam" for follow-up tone
+  aliases         String[] // "Hari", "Hari garu"
+  avatarUrl       String?
+  campusId        String?
+  campus          Campus?            @relation(fields: [campusId], references: [id])
+  isSenior        Boolean            @default(false) // approval mode always
+  active          Boolean            @default(true)
+  startDate       DateTime?
+  endDate         DateTime?
+  quietFrom       String             @default("21:00")
+  quietTo         String             @default("08:00")
+  failedLogins    Int                @default(0)
+  lockedUntil     DateTime?
+  lastSeenAt      DateTime?
+  remoteAllowed   Boolean            @default(false) // v1.1: remote attendance allowed
+  trackAttendance Boolean            @default(true) // v1.1: false for Guests and optionally Admin
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  memberships     TeamMember[]
+  ownedTasks      Task[]             @relation("owner")
+  pushSubs        PushSubscription[]
+  notifPrefs      Json               @default("{}")
 }
 
 model Campus {
@@ -157,6 +225,10 @@ model Campus {
   leadId    String?
   address   String?
   archived  Boolean     @default(false)
+  lat       Float? // v1.1: attendance geofence centre
+  lng       Float? // v1.1
+  radiusM   Int         @default(200) // v1.1
+  officeIps String[] // v1.1: CIDR ranges, e.g. "103.21.44.0/24"
   teams     Team[]
   users     User[]
   createdAt DateTime    @default(now())
@@ -164,63 +236,65 @@ model Campus {
 }
 
 model TeamType {
-  id           String @id @default(cuid())
-  name         String @unique
-  color        String @default("#EFEDE6")
-  stages       Json   @default("[]")   // ["Data collected","Trained","Go-live"]
-  customFields Json   @default("[]")   // [{key,label,type,options?}]
+  id           String  @id @default(cuid())
+  name         String  @unique
+  color        String  @default("#EFEDE6")
+  stages       Json    @default("[]") // ["Data collected","Trained","Go-live"]
+  customFields Json    @default("[]") // [{key,label,type,options?}]
   builtIn      Boolean @default(false)
   teams        Team[]
 }
 
 model Team {
-  id          String   @id @default(cuid())
+  id          String       @id @default(cuid())
   name        String
-  slug        String   @unique
+  slug        String       @unique
   typeId      String
-  type        TeamType @relation(fields: [typeId], references: [id])
+  type        TeamType     @relation(fields: [typeId], references: [id])
   campusId    String?
-  campus      Campus?  @relation(fields: [campusId], references: [id])
+  campus      Campus?      @relation(fields: [campusId], references: [id])
   leadId      String?
   description String?
   startDate   DateTime?
   endDate     DateTime?
-  fields      Json     @default("{}")
-  archived    Boolean  @default(false)
+  fields      Json         @default("{}")
+  archived    Boolean      @default(false)
   members     TeamMember[]
   channels    Channel[]
   tasks       Task[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 }
 
 model TeamMember {
-  id       String  @id @default(cuid())
+  id       String    @id @default(cuid())
   teamId   String
   userId   String
-  isLead   Boolean @default(false)
-  mentorId String?            // interns
-  joinedAt DateTime @default(now())
+  isLead   Boolean   @default(false)
+  mentorId String? // interns
+  joinedAt DateTime  @default(now())
   leftAt   DateTime?
-  team     Team @relation(fields: [teamId], references: [id])
-  user     User @relation(fields: [userId], references: [id])
+  team     Team      @relation(fields: [teamId], references: [id])
+  user     User      @relation(fields: [userId], references: [id])
+
   @@unique([teamId, userId])
 }
 
-model StageProgress {        // implementation tracker cell
-  id       String @id @default(cuid())
+model StageProgress { // implementation tracker cell
+  id       String    @id @default(cuid())
   teamId   String
   campusId String
   stage    String
-  status   String @default("NOT_STARTED") // NOT_STARTED|IN_PROGRESS|DONE|BLOCKED
+  status   String    @default("NOT_STARTED") // NOT_STARTED|IN_PROGRESS|DONE|BLOCKED
   date     DateTime?
   ownerId  String?
   note     String?
+
   @@unique([teamId, campusId, stage])
 }
 
 model Project {
-  id          String  @id @default(cuid())
+  id          String   @id @default(cuid())
   name        String
   description String?
   repoUrl     String?
@@ -230,162 +304,180 @@ model Project {
   prodUrl     String?
   ownerId     String?
   teamId      String?
-  area        String?           // "Websites & SEO", "UOS"...
-  status      String  @default("ACTIVE")
+  area        String? // "Websites & SEO", "UOS"...
+  status      String   @default("ACTIVE")
   tasks       Task[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
 
 model Task {
-  id            String     @id @default(cuid())
-  number        Int        @unique @default(autoincrement()) // shown as T-1042
+  id            String        @id @default(cuid())
+  number        Int           @unique @default(autoincrement()) // shown as T-1042
   title         String
   description   Json?
   ownerId       String
-  owner         User       @relation("owner", fields: [ownerId], references: [id])
+  owner         User          @relation("owner", fields: [ownerId], references: [id])
   requesterId   String?
   requesterName String?
   createdById   String
-  mode          TaskMode   @default(SOLO)
+  mode          TaskMode      @default(SOLO)
   partnerId     String?
   turnUserId    String?
   turnNote      String?
-  status        TaskStatus @default(TODO)
-  priority      Priority   @default(MEDIUM)
+  status        TaskStatus    @default(TODO)
+  priority      Priority      @default(MEDIUM)
   startAt       DateTime?
   dueAt         DateTime?
   doneAt        DateTime?
   doneById      String?
   blockedReason String?
   teamId        String?
-  team          Team?      @relation(fields: [teamId], references: [id])
+  team          Team?         @relation(fields: [teamId], references: [id])
   projectId     String?
-  project       Project?   @relation(fields: [projectId], references: [id])
+  project       Project?      @relation(fields: [projectId], references: [id])
   campusId      String?
   tags          String[]
-  source        TaskSource @default(MANUAL)
-  recurrence    String?    // RRULE
+  source        TaskSource    @default(MANUAL)
+  recurrence    String? // RRULE
   parentId      String?
-  checklist     Json       @default("[]")
+  checklist     Json          @default("[]")
   estimateHours Float?
-  lastActivityAt DateTime  @default(now())
-  reopenCount   Int        @default(0)
-  requestId     String?    @unique
+  workStartedAt DateTime? // v1.1
+  actualMinutes Int           @default(0) // v1.1: cached sum of TimeLog
+  feedbackState FeedbackState @default(NONE) // v1.1
+  lastActivityAt DateTime     @default(now())
+  reopenCount   Int           @default(0)
+  requestId     String?       @unique
   messageId     String?
   deletedAt     DateTime?
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
   comments      TaskComment[]
   followUps     FollowUp[]
+  timeLogs      TimeLog[] // v1.1
+  feedback      TaskFeedback[] // v1.1
+
   @@index([ownerId, status])
   @@index([requesterId, status])
   @@index([dueAt])
+  @@index([feedbackState]) // v1.1
 }
 
 model TaskComment {
   id        String   @id @default(cuid())
   taskId    String
   task      Task     @relation(fields: [taskId], references: [id])
-  authorId  String?            // null = system/assistant
-  kind      String   @default("COMMENT") // COMMENT|ACTIVITY|FOLLOWUP|REPLY
+  authorId  String? // null = system/assistant
+  kind      String   @default("COMMENT") // COMMENT|ACTIVITY|FOLLOWUP|REPLY|TIMELOG|FEEDBACK (v1.1)
   body      Json
   createdAt DateTime @default(now())
 }
 
 model Attachment {
-  id        String   @id @default(cuid())
-  ownerType String   // TASK|MESSAGE|DOC|REQUEST|BUG
-  ownerId   String
-  fileName  String
-  mime      String
-  size      Int
-  path      String   // local storage path
+  id           String   @id @default(cuid())
+  ownerType    String // TASK|MESSAGE|DOC|REQUEST|BUG|CERT_TEMPLATE (v1.1)
+  ownerId      String
+  fileName     String
+  mime         String
+  size         Int
+  path         String // local storage path
   uploadedById String
-  createdAt DateTime @default(now())
+  createdAt    DateTime @default(now())
 }
 
 model Request {
-  id          String       @id @default(cuid())
-  fromUserId  String
-  toUserId    String
-  text        String
-  why         String?
-  dueAt       DateTime?
-  priority    Priority     @default(MEDIUM)
-  state       RequestState @default(NEW)
+  id            String       @id @default(cuid())
+  fromUserId    String
+  toUserId      String
+  text          String
+  why           String?
+  dueAt         DateTime?
+  priority      Priority     @default(MEDIUM)
+  state         RequestState @default(NEW)
   declineReason String?
-  scheduledFor DateTime?
+  scheduledFor  DateTime?
   delegatedToId String?
   firstActionAt DateTime?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 }
 
 model FollowUp {
-  id            String    @id @default(cuid())
-  taskId        String
-  task          Task      @relation(fields: [taskId], references: [id])
-  onBehalfOfId  String            // usually Sri
-  targetId      String
-  cadence       FUCadence @default(DAILY)
-  everyNDays    Int?
-  template      String    @default("GENTLE")
-  customText    String?
-  needsApproval Boolean   @default(false)
-  status        FUStatus  @default(ACTIVE)
-  nextRunAt     DateTime
-  lastSentAt    DateTime?
-  sentCount     Int       @default(0)
-  unansweredCount Int     @default(0)
-  escalateAfter Int       @default(2)
-  maxSends      Int       @default(10)
-  escalatedLevel Int      @default(0) // 0 none, 1 lead, 2 admin
-  draftText     String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id              String    @id @default(cuid())
+  taskId          String
+  task            Task      @relation(fields: [taskId], references: [id])
+  onBehalfOfId    String // usually Sri
+  targetId        String
+  cadence         FUCadence @default(DAILY)
+  everyNDays      Int?
+  template        String    @default("GENTLE")
+  customText      String?
+  needsApproval   Boolean   @default(false)
+  status          FUStatus  @default(ACTIVE)
+  nextRunAt       DateTime
+  lastSentAt      DateTime?
+  sentCount       Int       @default(0)
+  unansweredCount Int       @default(0)
+  escalateAfter   Int       @default(2)
+  maxSends        Int       @default(10)
+  escalatedLevel  Int       @default(0) // 0 none, 1 lead, 2 admin
+  draftText       String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
   @@index([status, nextRunAt])
 }
 
 model DailyUpdate {
-  id        String   @id @default(cuid())
-  userId    String
-  date      DateTime @db.Date
-  done      String
-  next      String
-  blockers  String?
-  postedAt  DateTime @default(now())
-  onTime    Boolean
+  id       String   @id @default(cuid())
+  userId   String
+  date     DateTime @db.Date
+  done     String
+  next     String
+  blockers String?
+  postedAt DateTime @default(now())
+  onTime   Boolean
+
   @@unique([userId, date])
 }
 
 model Leave {
-  id      String   @id @default(cuid())
-  userId  String
-  from    DateTime @db.Date
-  to      DateTime @db.Date
-  reason  String?
+  id           String        @id @default(cuid())
+  userId       String
+  from         DateTime      @db.Date
+  to           DateTime      @db.Date
+  reason       String?
+  type         LeaveType     @default(CASUAL) // v1.1
+  halfDay      Boolean       @default(false) // v1.1 (only when from = to)
+  state        ApprovalState @default(APPROVED) // v1.1: existing rows stay approved; new rows start PENDING when approval is required
+  approverId   String? // v1.1
+  decidedAt    DateTime? // v1.1
+  decisionNote String? // v1.1
+  createdAt    DateTime      @default(now()) // v1.1
 }
 
 model Holiday {
-  id    String   @id @default(cuid())
-  date  DateTime @db.Date @unique
-  name  String
+  id        String   @id @default(cuid())
+  date      DateTime @db.Date @unique
+  name      String
+  type      String   @default("NATIONAL") // v1.1: NATIONAL|REGIONAL|OPTIONAL
+  campusIds String[] // v1.1: empty = all campuses
 }
 
 model Channel {
-  id        String      @id @default(cuid())
+  id        String          @id @default(cuid())
   name      String
-  slug      String      @unique
-  kind      ChannelKind @default(GROUP)
+  slug      String          @unique
+  kind      ChannelKind     @default(GROUP)
   teamId    String?
-  team      Team?       @relation(fields: [teamId], references: [id])
-  isPrivate Boolean     @default(false)
+  team      Team?           @relation(fields: [teamId], references: [id])
+  isPrivate Boolean         @default(false)
   topic     String?
-  archived  Boolean     @default(false)
+  archived  Boolean         @default(false)
   members   ChannelMember[]
   messages  Message[]
-  createdAt DateTime    @default(now())
+  createdAt DateTime        @default(now())
 }
 
 model ChannelMember {
@@ -395,24 +487,26 @@ model ChannelMember {
   muted      Boolean  @default(false)
   lastReadAt DateTime @default(now())
   channel    Channel  @relation(fields: [channelId], references: [id])
+
   @@unique([channelId, userId])
 }
 
 model Message {
-  id         String   @id @default(cuid())
-  channelId  String
-  channel    Channel  @relation(fields: [channelId], references: [id])
-  authorId   String?            // null = assistant/system
-  onBehalfOfId String?          // follow-ups
-  kind       String   @default("TEXT") // TEXT|VOICE|FILE|UPDATE|KUDOS|POLL|ANNOUNCE|FOLLOWUP|SYSTEM
-  body       String
-  meta       Json     @default("{}") // poll options, follow-up buttons, task refs
-  parentId   String?            // thread
-  editedAt   DateTime?
-  deletedAt  DateTime?
-  pinned     Boolean  @default(false)
-  createdAt  DateTime @default(now())
-  reactions  Reaction[]
+  id           String     @id @default(cuid())
+  channelId    String
+  channel      Channel    @relation(fields: [channelId], references: [id])
+  authorId     String? // null = assistant/system
+  onBehalfOfId String? // follow-ups
+  kind         String     @default("TEXT") // TEXT|VOICE|FILE|UPDATE|KUDOS|POLL|ANNOUNCE|FOLLOWUP|SYSTEM|CERT (v1.1)
+  body         String
+  meta         Json       @default("{}") // poll options, follow-up buttons, task refs
+  parentId     String? // thread
+  editedAt     DateTime?
+  deletedAt    DateTime?
+  pinned       Boolean    @default(false)
+  createdAt    DateTime   @default(now())
+  reactions    Reaction[]
+
   @@index([channelId, createdAt])
 }
 
@@ -422,14 +516,16 @@ model Reaction {
   userId    String
   emoji     String
   message   Message @relation(fields: [messageId], references: [id])
+
   @@unique([messageId, userId, emoji])
 }
 
-model Acknowledgement {   // announcements
+model Acknowledgement { // announcements
   id        String   @id @default(cuid())
   messageId String
   userId    String
   at        DateTime @default(now())
+
   @@unique([messageId, userId])
 }
 
@@ -456,18 +552,20 @@ model Kudos {
 }
 
 model Event {
-  id        String    @id @default(cuid())
+  id        String          @id @default(cuid())
   title     String
-  kind      EventKind @default(MEETING)
+  kind      EventKind       @default(MEETING)
   startAt   DateTime
   endAt     DateTime
-  allDay    Boolean   @default(false)
+  allDay    Boolean         @default(false)
   location  String?
   notes     String?
   ownerId   String
   taskId    String?
   docId     String?
   attendees EventAttendee[]
+
+  @@index([startAt]) // v1.1: month/year views
 }
 
 model EventAttendee {
@@ -476,6 +574,7 @@ model EventAttendee {
   userId  String
   status  String @default("INVITED") // INVITED|ACCEPTED|DECLINED
   event   Event  @relation(fields: [eventId], references: [id])
+
   @@unique([eventId, userId])
 }
 
@@ -488,18 +587,18 @@ model DocSpace {
 }
 
 model Doc {
-  id          String   @id @default(cuid())
+  id          String       @id @default(cuid())
   spaceId     String
-  space       DocSpace @relation(fields: [spaceId], references: [id])
+  space       DocSpace     @relation(fields: [spaceId], references: [id])
   parentId    String?
   title       String
   content     Json
   template    String?
-  permissions Json     @default("{}")
+  permissions Json         @default("{}")
   updatedById String
   deletedAt   DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
   versions    DocVersion[]
 }
 
@@ -538,7 +637,7 @@ model Bug {
 model Deployment {
   id          String   @id @default(cuid())
   projectId   String
-  environment String   // DEV|STAGING|PROD
+  environment String // DEV|STAGING|PROD
   version     String?
   notes       String?
   rollback    String?
@@ -547,39 +646,40 @@ model Deployment {
 }
 
 model Site {
-  id              String   @id @default(cuid())
-  domain          String   @unique
+  id              String      @id @default(cuid())
+  domain          String      @unique
   url             String
   hosting         String?
   dns             String?
   ownerId         String?
   sslExpiresAt    DateTime?
   domainExpiresAt DateTime?
-  credentialHint  String?  // "Bitwarden → Hosting/SMRU" — never a secret
-  lastStatus      String   @default("UNKNOWN") // UP|DOWN|UNKNOWN
+  credentialHint  String? // "Bitwarden → Hosting/SMRU" — never a secret
+  lastStatus      String      @default("UNKNOWN") // UP|DOWN|UNKNOWN
   lastCheckedAt   DateTime?
   checks          SiteCheck[]
 }
 
 model SiteCheck {
-  id      String   @id @default(cuid())
-  siteId  String
-  site    Site     @relation(fields: [siteId], references: [id])
-  at      DateTime @default(now())
-  ok      Boolean
-  status  Int?
-  ms      Int?
-  error   String?
+  id     String   @id @default(cuid())
+  siteId String
+  site   Site     @relation(fields: [siteId], references: [id])
+  at     DateTime @default(now())
+  ok     Boolean
+  status Int?
+  ms     Int?
+  error  String?
+
   @@index([siteId, at])
 }
 
-model Review {           // JPA
-  id          String   @id @default(cuid())
+model Review { // JPA
+  id          String    @id @default(cuid())
   userId      String
   periodStart DateTime
   periodEnd   DateTime
-  state       JpaState @default(DRAFT)
-  metrics     Json               // computed components, frozen at FINAL
+  state       JpaState  @default(DRAFT)
+  metrics     Json // computed components, frozen at FINAL
   leadScore   Float?
   leadComment String?
   strengths   String?
@@ -589,39 +689,41 @@ model Review {           // JPA
   rating      String?
   reviewerId  String?
   finalizedAt DateTime?
+
   @@unique([userId, periodStart, periodEnd])
 }
 
 model ReportPreset {
-  id        String  @id @default(cuid())
-  name      String
-  config    Json    // {period, audience, scope, sections, summary, format}
-  ownerId   String
-  builtIn   Boolean @default(false)
+  id      String  @id @default(cuid())
+  name    String
+  config  Json // {period, audience, scope, sections, summary, format}
+  ownerId String
+  builtIn Boolean @default(false)
 }
 
 model ReportRun {
-  id        String       @id @default(cuid())
-  presetId  String?
-  config    Json
-  format    ReportFormat
-  fileName  String
-  path      String
-  byId      String
+  id         String       @id @default(cuid())
+  presetId   String?
+  config     Json
+  format     ReportFormat
+  fileName   String
+  path       String
+  byId       String
   sharedWith String[]
-  createdAt DateTime     @default(now())
+  createdAt  DateTime     @default(now())
 }
 
 model Notification {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   userId    String
   type      String
   title     String
   body      String?
   url       String?
   readAt    DateTime?
-  pushed    Boolean  @default(false)
-  createdAt DateTime @default(now())
+  pushed    Boolean   @default(false)
+  createdAt DateTime  @default(now())
+
   @@index([userId, readAt])
 }
 
@@ -638,8 +740,8 @@ model PushSubscription {
 
 model InboxRule {
   id        String  @id @default(cuid())
-  when      Json    // {requesterIn?:[], textContains?:[]}
-  then      Json    // {priority?, suggestDelegateTo?}
+  when      Json // {requesterIn?:[], textContains?:[]}
+  then      Json // {priority?, suggestDelegateTo?}
   autoApply Boolean @default(false)
 }
 
@@ -649,24 +751,202 @@ model Setting {
 }
 
 model AuditLog {
-  id        String   @id @default(cuid())
-  actorId   String?
-  action    String   // CREATE|UPDATE|DELETE|LOGIN|...
-  entity    String
-  entityId  String
-  before    Json?
-  after     Json?
-  at        DateTime @default(now())
+  id       String   @id @default(cuid())
+  actorId  String?
+  action   String // CREATE|UPDATE|DELETE|LOGIN|CHECK_IN|ISSUE|REVOKE|...
+  entity   String
+  entityId String
+  before   Json?
+  after    Json?
+  at       DateTime @default(now())
+
   @@index([entity, entityId])
 }
 
 model AiLog {
-  id      String   @id @default(cuid())
-  userId  String?
-  kind    String   // PARSE|BRIEF|SUMMARY
-  input   String
-  output  String?
-  ms      Int?
-  ok      Boolean
-  at      DateTime @default(now())
+  id     String   @id @default(cuid())
+  userId String?
+  kind   String // PARSE|BRIEF|SUMMARY
+  input  String
+  output String?
+  ms     Int?
+  ok     Boolean
+  at     DateTime @default(now())
+}
+
+// ======================= v1.1 models =======================
+
+model TodoItem { // v1.1 — private to userId
+  id          String    @id @default(cuid())
+  userId      String
+  title       String
+  notes       String?
+  list        String    @default("Personal") // Personal|Work|Learning|custom
+  date        DateTime? @db.Date // null = Someday
+  startAt     DateTime? // null = unscheduled on that date
+  endAt       DateTime?
+  remindAt    DateTime?
+  reminded    Boolean   @default(false)
+  recurrence  String? // RRULE
+  priority    Priority  @default(MEDIUM)
+  done        Boolean   @default(false)
+  doneAt      DateTime?
+  carriedFrom DateTime? @db.Date
+  carryCount  Int       @default(0)
+  sortOrder   Int       @default(0)
+  taskId      String? // linked task (F-TODO-10)
+  deletedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([userId, date])
+  @@index([remindAt, reminded])
+}
+
+model TodoList { // v1.1 — custom list names and colors per user
+  id     String @id @default(cuid())
+  userId String
+  name   String
+  color  String @default("#0E6E66")
+
+  @@unique([userId, name])
+}
+
+model TimeLog { // v1.1
+  id          String        @id @default(cuid())
+  taskId      String
+  task        Task          @relation(fields: [taskId], references: [id])
+  userId      String
+  startedAt   DateTime
+  endedAt     DateTime? // null = timer running
+  minutes     Int? // set when ended / manual
+  note        String?
+  source      TimeLogSource @default(TIMER)
+  autoStopped Boolean       @default(false)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([taskId])
+  @@index([userId, startedAt])
+}
+
+model TaskFeedback { // v1.1
+  id            String          @id @default(cuid())
+  taskId        String
+  task          Task            @relation(fields: [taskId], references: [id])
+  userId        String // person who did the task
+  reviewerId    String // Admin or Lead
+  rating        Int // 1–5 (validate in Zod)
+  quality       Int?
+  timeliness    Int?
+  communication Int?
+  chips         String[]
+  comment       String?
+  outcome       FeedbackOutcome @default(ACCEPTED)
+  ackAt         DateTime?
+  reply         String?
+  lockedAt      DateTime? // 24 h after creation
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([taskId]) // several rows possible after rework
+  @@index([userId, createdAt])
+}
+
+model AttendanceRecord { // v1.1 — one per user per date
+  id            String           @id @default(cuid())
+  userId        String
+  date          DateTime         @db.Date
+  status        AttendanceStatus @default(ABSENT)
+  mode          WorkMode?
+  campusId      String?
+  sessions      Json             @default("[]") // [{in, out, inLat, inLng, inIp, outLat, outLng, outIp}]
+  firstInAt     DateTime?
+  lastOutAt     DateTime?
+  workedMinutes Int              @default(0)
+  lateMinutes   Int              @default(0)
+  verified      Boolean          @default(true)
+  verifyNote    String? // "IP not in office range", "Outside 200 m"
+  approvedById  String? // for unverified check-ins
+  autoClosed    Boolean          @default(false)
+  extraDay      Boolean          @default(false)
+  source        String           @default("SELF") // SELF|REGULARISED|ADMIN|SYSTEM
+  note          String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@unique([userId, date])
+  @@index([date, status])
+}
+
+model AttendanceRegularization { // v1.1
+  id         String        @id @default(cuid())
+  userId     String
+  date       DateTime      @db.Date
+  reqInAt    DateTime?
+  reqOutAt   DateTime?
+  reqMode    WorkMode?
+  reason     String
+  state      ApprovalState @default(PENDING)
+  reviewerId String?
+  reviewNote String?
+  reviewedAt DateTime?
+  createdAt  DateTime      @default(now())
+
+  @@index([state])
+  @@index([userId, date])
+}
+
+model CertificateTemplate { // v1.1
+  id          String        @id @default(cuid())
+  name        String
+  kind        CertKind      @default(INTERNSHIP_COMPLETION)
+  orientation String        @default("LANDSCAPE") // LANDSCAPE|PORTRAIT
+  background  String? // file path
+  logo        String?
+  layout      Json          @default("[]") // [{id, text, x, y, w, font, size, color, align}] in mm on A4
+  signatories Json          @default("[]") // [{name, designation, signaturePath}]
+  showQr      Boolean       @default(true)
+  showWebsite Boolean       @default(true)
+  archived    Boolean       @default(false)
+  createdById String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  certificates Certificate[]
+}
+
+model Certificate { // v1.1
+  id                  String              @id @default(cuid())
+  number              String              @unique // SMRU-IT-INT-2026-0042
+  code                String              @unique // K7Q2M9XA4D (public URL part)
+  templateId          String
+  template            CertificateTemplate @relation(fields: [templateId], references: [id])
+  userId              String
+  kind                CertKind
+  title               String // "Internship Completion Certificate"
+  data                Json // frozen placeholder values
+  periodStart         DateTime?
+  periodEnd           DateTime?
+  state               CertState           @default(DRAFT)
+  proposedById        String?
+  issuedById          String?
+  issuedAt            DateTime?
+  eligibilityOverride String? // reason if Admin overrode
+  revokedAt           DateTime?
+  revokeReason        String?
+  replacedById        String? // new certificate id
+  verifyUrl           String
+  pdfPath             String?
+  pngPath             String?
+  viewCount           Int                 @default(0)
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  @@index([userId])
+  @@index([state])
+}
+
+model CertificateCounter { // v1.1 — yearly sequence per type
+  id    String @id // e.g. "INT-2026"
+  value Int    @default(0)
 }

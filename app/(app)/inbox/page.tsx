@@ -1,117 +1,121 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import { InboxList } from "@/components/inbox/InboxList";
 import { Plus, Filter, CheckCircle2, X, Send } from "lucide-react";
 import { Request, Priority, RequestState } from "@prisma/client";
+import {
+  getInboxRequestsAction,
+  createRequestAction,
+  acceptRequestAction,
+  delegateRequestAction,
+  declineRequestAction,
+} from "./actions";
 
 export default function InboxPage() {
-  const [requests, setRequests] = useState<Request[]>([
-    {
-      id: "req_1",
-      fromUserId: "u_vc",
-      toUserId: "u_sri",
-      text: "Placement report summary for academic year 2025-26",
-      why: "Required for governing body meeting on Monday",
-      dueAt: new Date(Date.now() + 48 * 60 * 60 * 1000),
-      priority: Priority.HIGH,
-      state: RequestState.NEW,
-      declineReason: null,
-      scheduledFor: null,
-      delegatedToId: null,
-      firstActionAt: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    },
-    {
-      id: "req_2",
-      fromUserId: "u_coo",
-      toUserId: "u_sri",
-      text: "Renew annual SSL certificates for all 5 campus domains",
-      why: "Certificate monitoring alert",
-      dueAt: new Date(Date.now() + 96 * 60 * 60 * 1000),
-      priority: Priority.URGENT,
-      state: RequestState.NEW,
-      declineReason: null,
-      scheduledFor: null,
-      delegatedToId: null,
-      firstActionAt: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    },
-  ]);
-
+  const [requests, setRequests] = useState<Request[]>([]);
+  const [activeUsers, setActiveUsers] = useState<{ id: string; name: string; role?: string; email?: string }[]>([]);
   const [activeFilter, setActiveFilter] = useState<"ALL" | Priority>("ALL");
   const [showFilters, setShowFilters] = useState(false);
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
   const [newText, setNewText] = useState("");
   const [newWhy, setNewWhy] = useState("");
   const [newPriority, setNewPriority] = useState<Priority>(Priority.MEDIUM);
-  const [toast, setToast] = useState<string | null>(null);
+  const [selectedRecipientId, setSelectedRecipientId] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const showToast = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(null), 3000);
+  const loadRequests = async () => {
+    const res = await getInboxRequestsAction();
+    if (res.success && res.data) {
+      const d = res.data as any;
+      setRequests(d.requests || []);
+      setActiveUsers(d.activeUsers || []);
+      if (d.activeUsers && d.activeUsers.length > 0 && !selectedRecipientId) {
+        setSelectedRecipientId(d.activeUsers[0].id);
+      }
+    }
+    setIsLoading(false);
   };
 
-  const handleAccept = (requestId: string) => {
+  useEffect(() => {
+    loadRequests();
+  }, []);
+
+  const handleAccept = async (requestId: string) => {
     const req = requests.find((r) => r.id === requestId);
-    setRequests((prev) => prev.filter((r) => r.id !== requestId));
-    showToast(`Accepted request: "${req?.text || requestId}" → task created`);
+    const res = await acceptRequestAction(requestId);
+    if (res.success) {
+      toast.success(`Accepted request: "${req?.text || requestId}" → task created in 'I Owe'`);
+      loadRequests();
+    } else {
+      toast.error(res.error || "Failed to accept request");
+    }
   };
 
-  const handleDelegate = (requestId: string, delegateTo: string) => {
+  const handleDelegate = async (requestId: string, delegateTo: string) => {
     const req = requests.find((r) => r.id === requestId);
-    setRequests((prev) => prev.filter((r) => r.id !== requestId));
-    showToast(`Delegated "${req?.text || requestId}" to ${delegateTo}`);
+    const res = await delegateRequestAction(requestId, delegateTo);
+    if (res.success) {
+      const recipientName = activeUsers.find((u) => u.id === delegateTo)?.name || delegateTo;
+      toast.success(`Delegated "${req?.text || requestId}" to ${recipientName} → tracking in "I'm Chasing"`);
+      loadRequests();
+    } else {
+      toast.error(res.error || "Failed to delegate request");
+    }
   };
 
-  const handleDecline = (requestId: string, reason: string) => {
+  const handleDecline = async (requestId: string, reason: string) => {
     const req = requests.find((r) => r.id === requestId);
-    setRequests((prev) => prev.filter((r) => r.id !== requestId));
-    showToast(`Declined request: "${req?.text || requestId}"`);
+    const res = await declineRequestAction(requestId, reason);
+    if (res.success) {
+      toast.success(`Declined request: "${req?.text || requestId}"`);
+      loadRequests();
+    } else {
+      toast.error(res.error || "Failed to decline request");
+    }
   };
 
-  const handleCreateRequest = () => {
-    if (!newText.trim()) return;
+  const handleCreateRequest = async () => {
+    if (!newText.trim() || !selectedRecipientId || isSubmitting) return;
+    setIsSubmitting(true);
 
-    const newReq: Request = {
-      id: `req_${Date.now()}`,
-      fromUserId: "u_sri",
-      toUserId: "u_hari",
-      text: newText.trim(),
-      why: newWhy.trim() || null,
-      dueAt: new Date(Date.now() + 72 * 60 * 60 * 1000),
-      priority: newPriority,
-      state: RequestState.NEW,
-      declineReason: null,
-      scheduledFor: null,
-      delegatedToId: null,
-      firstActionAt: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+    try {
+      const res = await createRequestAction({
+        text: newText.trim(),
+        why: newWhy.trim() || undefined,
+        priority: newPriority,
+        toUserId: selectedRecipientId,
+      });
 
-    setRequests([newReq, ...requests]);
-    setIsNewModalOpen(false);
-    setNewText("");
-    setNewWhy("");
-    showToast(`Request submitted to Hari`);
+      if (res.success) {
+        setIsNewModalOpen(false);
+        setNewText("");
+        setNewWhy("");
+        const targetUser = activeUsers.find((u) => u.id === selectedRecipientId)?.name || "Recipient";
+        toast.success(`Request submitted to ${targetUser}`);
+        loadRequests();
+      } else {
+        toast.error(res.error || "Failed to submit request");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to submit request");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const filteredRequests = requests.filter((r) => {
+  const activePendingRequests = requests.filter((r) => r.state === RequestState.NEW);
+
+  const filteredRequests = activePendingRequests.filter((r) => {
     if (activeFilter === "ALL") return true;
     return r.priority === activeFilter;
   });
 
   return (
     <div className="space-y-6">
-      {toast && (
-        <div className="fixed bottom-6 right-6 z-50 bg-ink text-surface px-4 py-2.5 rounded-control text-xs font-medium shadow-panel border border-line flex items-center gap-2 animate-in fade-in">
-          <CheckCircle2 className="h-4 w-4 text-primary" />
-          <span>{toast}</span>
-        </div>
-      )}
+      
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -167,6 +171,7 @@ export default function InboxPage() {
       {/* Requests List */}
       <InboxList
         requests={filteredRequests}
+        activeUsers={activeUsers}
         onAccept={handleAccept}
         onDelegate={handleDelegate}
         onDecline={handleDecline}
@@ -230,11 +235,16 @@ export default function InboxPage() {
                 </div>
                 <div>
                   <label className="block text-ink font-medium mb-1">Send to</label>
-                  <select className="w-full px-3 py-2 bg-ground border border-line rounded-control text-ink font-mono text-xs focus:outline-none focus:border-primary">
-                    <option value="u_hari">Hari (Coordinator)</option>
-                    <option value="u_sri">Sri (IT Manager)</option>
-                    <option value="u_dev_web">Dev · Web</option>
-                    <option value="u_dev_backend">Dev · Backend</option>
+                  <select
+                    value={selectedRecipientId}
+                    onChange={(e) => setSelectedRecipientId(e.target.value)}
+                    className="w-full px-3 py-2 bg-ground border border-line rounded-control text-ink font-mono text-xs focus:outline-none focus:border-primary"
+                  >
+                    {activeUsers.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.name} {u.role ? `(${u.role})` : ""}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -250,10 +260,18 @@ export default function InboxPage() {
               </button>
               <button
                 type="button"
+                disabled={isSubmitting}
                 onClick={handleCreateRequest}
-                className="px-4 py-1.5 bg-primary hover:bg-primary-hover text-white rounded-control text-xs font-medium shadow-xs cursor-pointer"
+                className="px-4 py-1.5 bg-primary hover:bg-primary-hover text-white rounded-control text-xs font-medium shadow-xs cursor-pointer disabled:opacity-60 inline-flex items-center gap-1.5"
               >
-                Submit Request
+                {isSubmitting ? (
+                  <>
+                    <span className="h-3.5 w-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Submitting...</span>
+                  </>
+                ) : (
+                  <span>Submit Request</span>
+                )}
               </button>
             </div>
           </div>

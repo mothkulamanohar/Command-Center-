@@ -1,288 +1,136 @@
-"use client";
+import { Suspense } from "react";
+import { prisma } from "@/lib/db";
+import { getSessionUser } from "@/lib/auth/session";
+import ChatClient from "./ChatClient";
+import { ChannelKind } from "@prisma/client";
+import { redirect } from "next/navigation";
 
-import { useState } from "react";
-import { ChannelSidebar, ChannelItem, DirectMessageUser } from "@/components/chat/ChannelSidebar";
-import { MessageItem, ChatMessage } from "@/components/chat/MessageItem";
-import { MessageInput } from "@/components/chat/MessageInput";
-import { LinksBoard, LinkItem } from "@/components/chat/LinksBoard";
-import { AnnouncementBanner } from "@/components/chat/AnnouncementBanner";
-import { Hash, Users, Pin, ShieldCheck } from "lucide-react";
-import { parseKudosCommand, extractTaskRefs } from "@/lib/services/chat";
-import { extractUrls } from "@/lib/services/links";
+export default async function ChatPage() {
+  const user = await getSessionUser();
+  if (!user) {
+    redirect("/login");
+  }
 
-const INITIAL_CHANNELS: ChannelItem[] = [
-  { id: "c-1", name: "smru-campus-it", slug: "smru-campus-it", kind: "TEAM", unreadCount: 0 },
-  { id: "c-2", name: "dev-team", slug: "dev-team", kind: "TEAM", unreadCount: 2 },
-  { id: "c-3", name: "uos-rollout", slug: "uos-rollout", kind: "ANNOUNCE", unreadCount: 0 },
-];
-
-const INITIAL_DMS: DirectMessageUser[] = [
-  { id: "u-1", name: "Sri (IT Manager)", role: "LEAD", isOnline: true },
-  { id: "u-2", name: "Hari (Campus Lead)", role: "LEAD", isOnline: true },
-  { id: "u-3", name: "Janardhan (Support)", role: "MEMBER", isOnline: false },
-  { id: "u-4", name: "Dev Web", role: "DEVELOPER", isOnline: true },
-];
-
-const INITIAL_MESSAGES: Record<string, ChatMessage[]> = {
-  "c-1": [
-    {
-      id: "m-1",
-      authorName: "Sri",
-      authorRole: "IT Manager",
-      body: "Good morning team! Please check T-1042 for today's lab switch deployment at SMRU.",
-      kind: "TEXT",
-      createdAt: "09:30 AM",
-      reactions: [{ emoji: "👍", count: 3, userReacted: true }],
-    },
-    {
-      id: "m-2",
-      authorName: "Hari",
-      authorRole: "Campus Lead",
-      body: "All replacement switches arrived. Docs are updated at https://wiki.smru.in/switch-upgrade.",
-      kind: "TEXT",
-      createdAt: "09:45 AM",
-      reactions: [{ emoji: "✔", count: 2, userReacted: false }],
-    },
-    {
-      id: "m-3",
-      authorName: "Janardhan",
-      authorRole: "Support Tech",
-      body: "/kudos @Hari for coordinating the physical rack re-cabling over the weekend!",
-      kind: "KUDOS",
-      meta: {
-        kudosTarget: "Hari",
-        kudosReason: "coordinating the physical rack re-cabling over the weekend!",
-      },
-      createdAt: "10:12 AM",
-    },
-  ],
-  "c-2": [
-    {
-      id: "m-4",
-      authorName: "Dev Web",
-      authorRole: "Developer",
-      body: "Next.js 15 PWA build is running smoothly. Testing T-1043 on local environment.",
-      kind: "TEXT",
-      createdAt: "10:30 AM",
-      reactions: [{ emoji: "🚀", count: 4, userReacted: true }],
-    },
-  ],
-  "c-3": [
-    {
-      id: "m-5",
-      authorName: "Sri",
-      authorRole: "IT Manager",
-      body: "UOS Rollout Phase 1 begins tomorrow across Main Campus Block A and B.",
-      kind: "ANNOUNCE",
-      createdAt: "Yesterday",
-    },
-  ],
-};
-
-const INITIAL_LINKS: LinkItem[] = [
-  {
-    id: "l-1",
-    url: "https://wiki.smru.in/switch-upgrade",
-    title: "Switch Upgrade Documentation",
-    channelName: "smru-campus-it",
-    authorName: "Hari",
-    createdAt: "Today 09:45 AM",
-  },
-  {
-    id: "l-2",
-    url: "https://grafana.internal.smru.in/d/core-network",
-    title: "Core Network Real-time Telemetry",
-    channelName: "smru-campus-it",
-    authorName: "Sri",
-    createdAt: "Yesterday",
-  },
-];
-
-export default function ChatPage() {
-  const [activeType, setActiveType] = useState<"channel" | "dm" | "links">("channel");
-  const [activeChannel, setActiveChannel] = useState<ChannelItem>(INITIAL_CHANNELS[0]!);
-  const [activeDm, setActiveDm] = useState<DirectMessageUser | null>(null);
-  const [messages, setMessages] = useState<Record<string, ChatMessage[]>>(INITIAL_MESSAGES);
-  const [links, setLinks] = useState<LinkItem[]>(INITIAL_LINKS);
-  const [notification, setNotification] = useState<string | null>(null);
-
-  const currentChannelId = activeType === "dm" ? activeDm?.id ?? "u-1" : activeChannel.id;
-  const currentMessages = messages[currentChannelId] || [];
-
-  const showToast = (text: string) => {
-    setNotification(text);
-    setTimeout(() => setNotification(null), 3000);
-  };
-
-  const handleSendMessage = (text: string, kind = "TEXT", meta?: Record<string, unknown>) => {
-    const kudos = parseKudosCommand(text);
-    const taskRefs = extractTaskRefs(text);
-    const extractedUrls = extractUrls(text);
-
-    let messageKind = kind;
-    const finalMeta = { ...meta };
-
-    if (kudos) {
-      messageKind = "KUDOS";
-      finalMeta.kudosTarget = kudos.targetName;
-      finalMeta.kudosReason = kudos.reason;
-      showToast(`Kudos recognized for @${kudos.targetName}!`);
-    } else if (taskRefs.length > 0) {
-      finalMeta.taskRefs = taskRefs;
+  // Fetch channels (Team, Group, Announce)
+  const allChannels = await prisma.channel.findMany({
+    where: { kind: { in: [ChannelKind.TEAM, ChannelKind.GROUP, ChannelKind.ANNOUNCE] } },
+    include: {
+      team: { include: { members: true } },
+      members: true,
     }
+  });
 
-    const newMsg: ChatMessage = {
-      id: `msg-${Date.now()}`,
-      authorName: "Sri",
-      authorRole: "IT Manager",
-      body: text,
-      kind: messageKind,
-      meta: finalMeta,
-      createdAt: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
+  const channels = allChannels.map((c: any) => ({
+    id: c.id,
+    name: c.name,
+    slug: c.slug,
+    kind: c.kind,
+    isPrivate: c.isPrivate,
+    unreadCount: 0,
+    presentCount: c.team ? c.team.members.length : c.members.length,
+    totalMembers: c.team ? c.team.members.length : c.members.length,
+  }));
+
+  // Fetch DMs
+  const dms = await prisma.channel.findMany({
+    where: { kind: ChannelKind.DM, members: { some: { userId: user.id } } },
+    include: {
+      members: true
+    }
+  });
+
+  const memberIds = dms.flatMap((dm: any) => dm.members.map((m: any) => m.userId)).filter((id: any) => id !== user.id);
+  const dmUsers = await prisma.user.findMany({ where: { id: { in: memberIds } } });
+
+  const directMessages = dms.map((dm: any) => {
+    const otherUserId = dm.members.find((m: any) => m.userId !== user.id)?.userId;
+    const otherMember = dmUsers.find((u: any) => u.id === otherUserId);
+    return {
+      id: otherMember?.id || dm.id,
+      name: otherMember?.name || "Unknown",
+      role: otherMember?.role || "MEMBER",
+      isOnline: true,
+      attendanceStatus: "PRESENT" as const,
     };
+  });
 
-    setMessages((prev) => ({
-      ...prev,
-      [currentChannelId]: [...(prev[currentChannelId] || []), newMsg],
+  const allUsers = await prisma.user.findMany({
+    where: { active: true },
+    select: { id: true, name: true, role: true, email: true }
+  });
+
+  // Fetch initial messages from DB
+  const rawMessages = await prisma.message.findMany({
+    where: { deletedAt: null },
+    include: { reactions: true },
+    orderBy: { createdAt: "asc" },
+    take: 200,
+  });
+
+  const userMap = new Map(allUsers.map((u: any) => [u.id, u]));
+
+  const initialMessagesByChannel: Record<string, any[]> = {};
+  for (const m of rawMessages) {
+    if (!initialMessagesByChannel[m.channelId]) {
+      initialMessagesByChannel[m.channelId] = [];
+    }
+    const author = m.authorId ? userMap.get(m.authorId) : null;
+    const reactionCounts = new Map<string, { count: number; userReacted: boolean }>();
+    for (const r of m.reactions) {
+      const cur = reactionCounts.get(r.emoji) || { count: 0, userReacted: false };
+      cur.count += 1;
+      if (r.userId === user.id) cur.userReacted = true;
+      reactionCounts.set(r.emoji, cur);
+    }
+    const reactions = Array.from(reactionCounts.entries()).map(([emoji, val]) => ({
+      emoji,
+      count: val.count,
+      userReacted: val.userReacted,
     }));
 
-    if (extractedUrls.length > 0) {
-      const newLinks: LinkItem[] = extractedUrls.map((url, i) => ({
-        id: `link-${Date.now()}-${i}`,
-        url,
-        channelName: activeChannel.name,
-        authorName: "Sri",
-        createdAt: "Just now",
-      }));
-      setLinks((prev) => [...newLinks, ...prev]);
-    }
-  };
-
-  const handleReact = (messageId: string, emoji: string) => {
-    setMessages((prev) => {
-      const list = prev[currentChannelId] || [];
-      return {
-        ...prev,
-        [currentChannelId]: list.map((m) => {
-          if (m.id !== messageId) return m;
-          const reactions = [...(m.reactions || [])];
-          const existing = reactions.find((r) => r.emoji === emoji);
-          if (existing) {
-            if (existing.userReacted) {
-              existing.count -= 1;
-              existing.userReacted = false;
-            } else {
-              existing.count += 1;
-              existing.userReacted = true;
-            }
-          } else {
-            reactions.push({ emoji, count: 1, userReacted: true });
-          }
-          return { ...m, reactions: reactions.filter((r) => r.count > 0) };
-        }),
-      };
+    initialMessagesByChannel[m.channelId].push({
+      id: m.id,
+      channelId: m.channelId,
+      authorName: author?.name || (m.kind === "KUDOS" ? "Team" : "System"),
+      authorRole: author?.role || "MEMBER",
+      body: m.body,
+      kind: m.kind,
+      meta: (m.meta as Record<string, unknown>) || {},
+      createdAt: m.createdAt.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
+      reactions,
     });
-  };
+  }
 
-  const handleMakeTask = (text: string) => {
-    showToast(`Task draft created: "${text.slice(0, 30)}..."`);
-  };
-
-  const handleMakeRequest = (text: string) => {
-    showToast(`Leadership ask routed to Inbox: "${text.slice(0, 30)}..."`);
-  };
+  // Fetch initial links from DB
+  const rawLinks = await prisma.link.findMany({
+    orderBy: { createdAt: "desc" },
+    take: 50,
+  });
+  const channelMap = new Map(channels.map((c: any) => [c.id, c.name]));
+  const initialLinks = rawLinks.map((l: any) => ({
+    id: l.id,
+    url: l.url,
+    title: l.title || l.url.replace(/^https?:\/\//, ""),
+    channelName: (l.channelId && channelMap.get(l.channelId)) || "General",
+    authorName: (l.sharedById && userMap.get(l.sharedById)?.name) || "Team",
+    createdAt: l.createdAt.toLocaleDateString("en-IN", {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }),
+  }));
 
   return (
-    <div className="space-y-4">
-      {notification && (
-        <div className="fixed bottom-6 right-6 z-50 bg-ink text-surface px-4 py-2.5 rounded-control text-xs font-medium shadow-panel border border-line flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2">
-          <ShieldCheck className="h-4 w-4 text-primary" />
-          <span>{notification}</span>
-        </div>
-      )}
-
-      {/* Main Chat Panel Container */}
-      <div className="bg-surface rounded-panel border border-line h-[calc(100vh-140px)] min-h-[580px] flex overflow-hidden shadow-xs">
-        {/* Sidebar */}
-        <ChannelSidebar
-          channels={INITIAL_CHANNELS}
-          directMessages={INITIAL_DMS}
-          activeId={activeType === "dm" ? activeDm?.id || "" : activeChannel.id}
-          activeType={activeType}
-          onSelectChannel={(ch) => {
-            setActiveChannel(ch);
-            setActiveType("channel");
-          }}
-          onSelectDm={(user) => {
-            setActiveDm(user);
-            setActiveType("dm");
-          }}
-          onOpenLinks={() => setActiveType("links")}
-        />
-
-        {/* Content Area */}
-        {activeType === "links" ? (
-          <LinksBoard links={links} onClose={() => setActiveType("channel")} />
-        ) : (
-          <div className="flex-1 flex flex-col bg-surface overflow-hidden">
-            {/* Channel Top Header */}
-            <div className="p-3 border-b border-line flex items-center justify-between bg-surface-alt/40">
-              <div className="flex items-center gap-2">
-                <Hash className="h-4 w-4 text-primary" />
-                <span className="text-sm font-bold text-ink">
-                  {activeType === "dm" ? activeDm?.name : activeChannel.name}
-                </span>
-                <span className="text-xs text-mutedText border-l border-line pl-2 ml-1 hidden sm:inline">
-                  {activeType === "dm" ? activeDm?.role : activeChannel.slug}
-                </span>
-              </div>
-              <div className="flex items-center gap-3 text-xs text-mutedText">
-                <div className="flex items-center gap-1 font-mono">
-                  <Users className="h-3.5 w-3.5" />
-                  <span>5 members</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Announcement Banner if applicable (F-CHAT-10) */}
-            {activeChannel.kind === "ANNOUNCE" && (
-              <AnnouncementBanner
-                id="ann-1"
-                title="Critical Maintenance"
-                content="Core network maintenance scheduled tonight at 23:00 IST. Campus Wi-Fi will reboot."
-                acknowledgedCount={12}
-                onAcknowledge={() => showToast("Announcement acknowledged!")}
-              />
-            )}
-
-            {/* Messages Scroll Feed */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-1">
-              {currentMessages.length === 0 ? (
-                <div className="text-center py-16 text-mutedText text-xs">
-                  No messages yet. Send a message to start the conversation!
-                </div>
-              ) : (
-                currentMessages.map((msg) => (
-                  <MessageItem
-                    key={msg.id}
-                    message={msg}
-                    onReact={handleReact}
-                    onMakeTask={handleMakeTask}
-                    onMakeRequest={handleMakeRequest}
-                  />
-                ))
-              )}
-            </div>
-
-            {/* Message Input Bar */}
-            <MessageInput
-              channelName={activeType === "dm" ? activeDm?.name || "dm" : activeChannel.name}
-              isAnnouncementOnly={activeChannel.kind === "ANNOUNCE"}
-              onSendMessage={handleSendMessage}
-            />
-          </div>
-        )}
-      </div>
-    </div>
+    <Suspense fallback={<div className="p-8 text-center text-xs text-mutedText">Loading Chat...</div>}>
+      <ChatClient
+        initialChannels={channels}
+        initialDMs={directMessages}
+        allUsers={allUsers}
+        currentUser={user}
+        initialMessages={initialMessagesByChannel}
+        initialLinks={initialLinks}
+      />
+    </Suspense>
   );
 }

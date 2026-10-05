@@ -283,6 +283,60 @@ async function main() {
     });
   }
 
+  // 6. Seed Tasks and Follow-ups
+  const sriId = userMap.get("sri@smru.in")!;
+  const hariId = userMap.get("hari@smru.in")!;
+  const vcId = userMap.get("vc.office@smru.in")!;
+
+  const t1 = await prisma.task.upsert({
+    where: { id: "t_1" },
+    update: {},
+    create: {
+      id: "t_1",
+      number: 1042,
+      title: "Review monthly KPI report for VC",
+      ownerId: sriId,
+      requesterId: vcId,
+      requesterName: "VC Office",
+      createdById: vcId,
+      status: "TODO",
+      priority: "HIGH",
+      dueAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      source: "LEADERSHIP"
+    }
+  });
+
+  const t3 = await prisma.task.upsert({
+    where: { id: "t_3" },
+    update: {},
+    create: {
+      id: "t_3",
+      number: 1044,
+      title: "Fix admission form verification on smru.in",
+      ownerId: hariId,
+      requesterId: sriId,
+      createdById: sriId,
+      status: "IN_PROGRESS",
+      priority: "HIGH",
+      dueAt: new Date(Date.now() + 18 * 60 * 60 * 1000),
+      source: "COMMAND"
+    }
+  });
+
+  await prisma.followUp.upsert({
+    where: { id: "fu_1" },
+    update: {},
+    create: {
+      id: "fu_1",
+      taskId: t3.id,
+      onBehalfOfId: sriId,
+      targetId: hariId,
+      cadence: "DAILY",
+      template: "GENTLE",
+      nextRunAt: new Date(Date.now() - 1000 * 60 * 60), // Due an hour ago, will fire today
+    }
+  });
+
   console.log("Database seeded successfully with all roles, campuses, teams, and sites!");
 }
 

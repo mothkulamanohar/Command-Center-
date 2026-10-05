@@ -11,6 +11,7 @@ export interface JpaProfile {
     delivery: number;
     timeliness: number;
     reliability: number;
+    attendance?: number;
     responsiveness: number;
     quality: number;
     leadReview: number;
@@ -64,21 +65,28 @@ export function JpaCard({ jpa }: JpaCardProps) {
         </div>
       </div>
 
-      {/* 6 Component Breakdown */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs">
+      {/* 7 Component Breakdown (SPEC §13.2 v1.1) */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
         <div className="p-2.5 rounded-control bg-surface-alt border border-line">
-          <div className="text-[10px] text-mutedText font-mono uppercase">Delivery (25%)</div>
+          <div className="text-[10px] text-mutedText font-mono uppercase">Delivery (20%)</div>
           <div className="text-sm font-bold text-ink font-mono mt-1">{jpa.scores.delivery} / 5</div>
         </div>
 
         <div className="p-2.5 rounded-control bg-surface-alt border border-line">
-          <div className="text-[10px] text-mutedText font-mono uppercase">Timeliness (25%)</div>
+          <div className="text-[10px] text-mutedText font-mono uppercase">Timeliness (20%)</div>
           <div className="text-sm font-bold text-ink font-mono mt-1">{jpa.scores.timeliness} / 5</div>
         </div>
 
         <div className="p-2.5 rounded-control bg-surface-alt border border-line">
-          <div className="text-[10px] text-mutedText font-mono uppercase">Reliability (15%)</div>
+          <div className="text-[10px] text-mutedText font-mono uppercase">Reliability (10%)</div>
           <div className="text-sm font-bold text-ink font-mono mt-1">{jpa.scores.reliability} / 5</div>
+        </div>
+
+        <div className="p-2.5 rounded-control bg-surface-alt border border-line">
+          <div className="text-[10px] text-mutedText font-mono uppercase">Attendance (10%)</div>
+          <div className="text-sm font-bold text-ink font-mono mt-1">
+            {jpa.scores.attendance ?? 5.0} / 5
+          </div>
         </div>
 
         <div className="p-2.5 rounded-control bg-surface-alt border border-line">
@@ -87,7 +95,7 @@ export function JpaCard({ jpa }: JpaCardProps) {
         </div>
 
         <div className="p-2.5 rounded-control bg-surface-alt border border-line">
-          <div className="text-[10px] text-mutedText font-mono uppercase">Quality (10%)</div>
+          <div className="text-[10px] text-mutedText font-mono uppercase">Quality (15%)</div>
           <div className="text-sm font-bold text-ink font-mono mt-1">{jpa.scores.quality} / 5</div>
         </div>
 

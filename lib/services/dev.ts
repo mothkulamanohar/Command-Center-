@@ -148,14 +148,31 @@ export async function reportBug(actor: UserContext, input: z.infer<typeof Report
       },
     });
 
+    // 2. Create Bug record in DB
+    let bug: any = null;
+    if (tx.bug) {
+      bug = await tx.bug.create({
+        data: {
+          title: data.title,
+          steps: data.steps,
+          expected: data.expected,
+          actual: data.actual,
+          severity: data.severity as any,
+          taskId: task.id,
+          projectId: data.projectId,
+          siteId: data.siteId,
+        },
+      });
+    }
+
     await logAudit(tx, {
       actorId: actor.id,
       action: "BUG_CREATE",
-      entity: "Task",
-      entityId: task.id,
-      after: { title: data.title, severity: data.severity },
+      entity: "Bug",
+      entityId: bug ? bug.id : task.id,
+      after: { title: data.title, severity: data.severity, taskId: task.id },
     });
 
-    return task;
+    return Object.assign(task, { bug });
   });
 }

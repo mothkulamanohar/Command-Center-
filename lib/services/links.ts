@@ -8,7 +8,9 @@ const URL_REGEX = /(https?:\/\/[^\s]+)/g;
  */
 export function extractUrls(text: string): string[] {
   const matches = text.match(URL_REGEX);
-  return matches ? Array.from(new Set(matches)) : [];
+  if (!matches) return [];
+  const cleaned = matches.map((u) => u.replace(/[.,;:!?\)\]>]+$/, ""));
+  return Array.from(new Set(cleaned));
 }
 
 /**

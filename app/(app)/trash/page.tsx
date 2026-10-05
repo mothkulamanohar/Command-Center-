@@ -1,9 +1,16 @@
 "use client";
 
-import { useState } from "react";
-import { Trash2, RotateCcw, AlertTriangle, CheckCircle2, ShieldAlert, X } from "lucide-react";
+import { useState, useEffect } from "react";
+import { toast } from "sonner";
+import { Trash2, RotateCcw, AlertTriangle, CheckCircle2 } from "lucide-react";
+import {
+  getTrashItemsAction,
+  restoreItemAction,
+  deletePermanentAction,
+  emptyTrashAction,
+} from "./actions";
 
-interface TrashItem {
+export interface TrashItem {
   id: string;
   type: "TASK" | "DOC" | "REQUEST";
   title: string;
@@ -11,64 +18,67 @@ interface TrashItem {
   daysRemaining: number;
 }
 
-const INITIAL_TRASH: TrashItem[] = [
-  {
-    id: "tr-1",
-    type: "TASK",
-    title: "T-1033: Obsolete printer mapping and spooler setup",
-    deletedAt: "20 Sep 2026",
-    daysRemaining: 26,
-  },
-  {
-    id: "tr-2",
-    type: "DOC",
-    title: "Draft SOP: Legacy Cisco Catalyst 2960 baseline (v0.1)",
-    deletedAt: "18 Sep 2026",
-    daysRemaining: 24,
-  },
-  {
-    id: "tr-3",
-    type: "REQUEST",
-    title: "Quote for 100m Cat6 patch cable roll (Duplicate)",
-    deletedAt: "22 Sep 2026",
-    daysRemaining: 28,
-  },
-];
-
 export default function TrashPage() {
-  const [items, setItems] = useState<TrashItem[]>(INITIAL_TRASH);
+  const [items, setItems] = useState<TrashItem[]>([]);
   const [confirmEmpty, setConfirmEmpty] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<TrashItem | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isPurging, setIsPurging] = useState(false);
 
-  const showToast = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(null), 3000);
+  const loadItems = async () => {
+    const res = await getTrashItemsAction();
+    if (res.success && res.data) {
+      setItems(res.data as any);
+    }
+    setIsLoading(false);
   };
 
-  const handleRestore = (id: string, title: string) => {
-    setItems((prev) => prev.filter((i) => i.id !== id));
-    showToast(`Restored: "${title}"`);
+  useEffect(() => {
+    loadItems();
+  }, []);
+
+  const handleRestore = async (id: string, title: string) => {
+    const res = await restoreItemAction(id);
+    if (res.success) {
+      toast.success(`Restored: "${title}"`);
+      loadItems();
+    } else {
+      toast.error(res.error || "Failed to restore item");
+    }
   };
 
-  const handleDeletePermanent = (id: string, title: string) => {
-    setItems((prev) => prev.filter((i) => i.id !== id));
-    showToast(`Permanently deleted: "${title}"`);
+  const handleDeletePermanent = async () => {
+    if (!itemToDelete || isPurging) return;
+    setIsPurging(true);
+    const { id, title } = itemToDelete;
+    const res = await deletePermanentAction(id);
+    setItemToDelete(null);
+    setIsPurging(false);
+    if (res.success) {
+      toast.success(`Permanently deleted: "${title}"`);
+      loadItems();
+    } else {
+      toast.error(res.error || "Failed to delete item");
+    }
   };
 
-  const handleEmptyTrash = () => {
-    setItems([]);
+  const handleEmptyTrash = async () => {
+    if (isPurging) return;
+    setIsPurging(true);
+    const res = await emptyTrashAction();
     setConfirmEmpty(false);
-    showToast("Trash emptied permanently");
+    setIsPurging(false);
+    if (res.success) {
+      toast.success(`Trash emptied (${res.data || 0} items purged)`);
+      loadItems();
+    } else {
+      toast.error(res.error || "Failed to empty trash");
+    }
   };
 
   return (
     <div className="space-y-6">
-      {toast && (
-        <div className="fixed bottom-6 right-6 z-50 bg-ink text-surface px-4 py-2.5 rounded-control text-xs font-medium shadow-panel border border-line flex items-center gap-2 animate-in fade-in">
-          <CheckCircle2 className="h-4 w-4 text-primary" />
-          <span>{toast}</span>
-        </div>
-      )}
+      
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -128,7 +138,7 @@ export default function TrashPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleDeletePermanent(item.id, item.title)}
+                  onClick={() => setItemToDelete(item)}
                   className="inline-flex items-center gap-1 px-2.5 py-1 text-danger hover:bg-danger/10 rounded text-xs font-medium transition-colors cursor-pointer"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
@@ -137,6 +147,46 @@ export default function TrashPage() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Confirm Single Item Permanent Delete Modal */}
+      {itemToDelete && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-surface rounded-panel border border-line w-full max-w-sm shadow-panel p-5 space-y-4 animate-in fade-in">
+            <div className="flex items-center gap-2 text-danger">
+              <AlertTriangle className="h-5 w-5" />
+              <h3 className="text-sm font-bold text-ink">Permanently Delete Item?</h3>
+            </div>
+            <p className="text-xs text-mutedText leading-relaxed">
+              Are you sure you want to permanently delete <strong className="text-ink">&quot;{itemToDelete.title}&quot;</strong>? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-2 pt-2 border-t border-line">
+              <button
+                type="button"
+                disabled={isPurging}
+                onClick={() => setItemToDelete(null)}
+                className="px-3 py-1.5 text-xs text-mutedText hover:text-ink cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isPurging}
+                onClick={handleDeletePermanent}
+                className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-danger hover:bg-danger-hover text-white rounded-control text-xs font-medium shadow-xs cursor-pointer disabled:opacity-60"
+              >
+                {isPurging ? (
+                  <>
+                    <span className="h-3.5 w-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <span>Permanently Delete</span>
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -154,6 +204,7 @@ export default function TrashPage() {
             <div className="flex justify-end gap-2 pt-2 border-t border-line">
               <button
                 type="button"
+                disabled={isPurging}
                 onClick={() => setConfirmEmpty(false)}
                 className="px-3 py-1.5 text-xs text-mutedText hover:text-ink cursor-pointer"
               >
@@ -161,10 +212,18 @@ export default function TrashPage() {
               </button>
               <button
                 type="button"
+                disabled={isPurging}
                 onClick={handleEmptyTrash}
-                className="px-4 py-1.5 bg-danger hover:bg-danger-hover text-white rounded-control text-xs font-medium shadow-xs cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-danger hover:bg-danger-hover text-white rounded-control text-xs font-medium shadow-xs cursor-pointer disabled:opacity-60"
               >
-                Permanently Delete
+                {isPurging ? (
+                  <>
+                    <span className="h-3.5 w-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Purging...</span>
+                  </>
+                ) : (
+                  <span>Permanently Purge All</span>
+                )}
               </button>
             </div>
           </div>

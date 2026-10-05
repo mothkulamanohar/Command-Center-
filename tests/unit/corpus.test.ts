@@ -3,8 +3,8 @@ import { parseCommand } from "@/lib/cmd/parse";
 import corpus from "../cmd/corpus.json";
 
 describe("Plain-English Rule Parser Corpus Benchmark (SPEC §8.6 & §23.2)", () => {
-  it("has at least 150 benchmark sentences in corpus", () => {
-    expect(corpus.length).toBeGreaterThanOrEqual(150);
+  it("has at least 210 benchmark sentences in corpus", () => {
+    expect(corpus.length).toBeGreaterThanOrEqual(210);
   });
 
   it("achieves >= 90% parse accuracy across the full corpus", () => {

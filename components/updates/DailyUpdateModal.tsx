@@ -21,14 +21,20 @@ export function DailyUpdateModal({
   const [done, setDone] = useState(initialDone);
   const [next, setNext] = useState(initialNext);
   const [blockers, setBlockers] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!done.trim() || !next.trim()) return;
-    onSubmit({ done, next, blockers: blockers.trim() || undefined });
-    onClose();
+    if (isSubmitting || !done.trim() || !next.trim()) return;
+    setIsSubmitting(true);
+    try {
+      await onSubmit({ done, next, blockers: blockers.trim() || undefined });
+      onClose();
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -115,9 +121,17 @@ export function DailyUpdateModal({
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 bg-primary hover:bg-primary-hover text-white text-xs font-semibold rounded-control transition-colors shadow-xs"
+                disabled={isSubmitting}
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-primary-hover disabled:opacity-60 disabled:cursor-not-allowed text-white text-xs font-semibold rounded-control transition-colors shadow-xs cursor-pointer"
               >
-                Post Update
+                {isSubmitting ? (
+                  <>
+                    <span className="h-3.5 w-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Posting...</span>
+                  </>
+                ) : (
+                  <span>Post Update</span>
+                )}
               </button>
             </div>
           </div>

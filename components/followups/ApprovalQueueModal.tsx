@@ -5,6 +5,7 @@ import { ShieldAlert, Send, Edit2, X, Check } from "lucide-react";
 
 export interface PendingApprovalItem {
   id: string;
+  kind?: "FOLLOWUP" | "ATTENDANCE";
   targetName: string;
   targetRole: string;
   isSenior?: boolean;
@@ -18,7 +19,8 @@ interface ApprovalQueueModalProps {
   isOpen: boolean;
   onClose: () => void;
   items: PendingApprovalItem[];
-  onApprove: (id: string, text: string) => void;
+  onApprove: (id: string, text: string) => Promise<void> | void;
+  onReject?: (id: string) => Promise<void> | void;
   onSkip: (id: string) => void;
 }
 
@@ -27,10 +29,12 @@ export function ApprovalQueueModal({
   onClose,
   items,
   onApprove,
+  onReject,
   onSkip,
 }: ApprovalQueueModalProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
+  const [processingId, setProcessingId] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
@@ -39,9 +43,35 @@ export function ApprovalQueueModal({
     setEditText(item.draftText);
   };
 
-  const handleSaveApprove = (id: string) => {
-    onApprove(id, editText);
-    setEditingId(null);
+  const handleSaveApprove = async (id: string) => {
+    if (processingId) return;
+    setProcessingId(id);
+    try {
+      await onApprove(id, editText);
+      setEditingId(null);
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleApproveClick = async (id: string, text: string) => {
+    if (processingId) return;
+    setProcessingId(id);
+    try {
+      await onApprove(id, text);
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleRejectClick = async (id: string) => {
+    if (processingId || !onReject) return;
+    setProcessingId(id);
+    try {
+      await onReject(id);
+    } finally {
+      setProcessingId(null);
+    }
   };
 
   return (
@@ -51,7 +81,7 @@ export function ApprovalQueueModal({
         <div className="p-4 border-b border-line flex items-center justify-between bg-surface-alt/50">
           <div className="flex items-center gap-2">
             <ShieldAlert className="h-4 w-4 text-chasing" />
-            <h2 className="text-sm font-bold text-ink">Follow-ups Awaiting Approval</h2>
+            <h2 className="text-sm font-bold text-ink">Pending Approvals Queue</h2>
             <span className="text-[10px] font-mono bg-chasing/10 text-chasing border border-chasing/20 px-1.5 py-0.5 rounded font-bold">
               {items.length} Pending
             </span>
@@ -69,7 +99,7 @@ export function ApprovalQueueModal({
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
           {items.length === 0 ? (
             <div className="text-center py-12 text-mutedText text-xs">
-              All follow-ups approved! No items pending review.
+              All items approved! No pending requests or follow-ups to review.
             </div>
           ) : (
             items.map((item) => (
@@ -87,6 +117,11 @@ export function ApprovalQueueModal({
                       {item.isSenior && (
                         <span className="text-[10px] font-mono bg-chasing/10 text-chasing px-1.5 py-0.2 rounded font-semibold">
                           Senior Officer
+                        </span>
+                      )}
+                      {item.kind === "ATTENDANCE" && (
+                        <span className="text-[10px] font-mono bg-primary/10 text-primary border border-primary/20 px-1.5 py-0.2 rounded font-semibold">
+                          Attendance Regularization
                         </span>
                       )}
                     </div>
@@ -116,11 +151,21 @@ export function ApprovalQueueModal({
                       </button>
                       <button
                         type="button"
+                        disabled={processingId === item.id}
                         onClick={() => handleSaveApprove(item.id)}
-                        className="inline-flex items-center gap-1 px-3 py-1 bg-primary text-white text-xs font-semibold rounded-control"
+                        className="inline-flex items-center gap-1 px-3 py-1 bg-primary disabled:opacity-60 disabled:cursor-not-allowed text-white text-xs font-semibold rounded-control cursor-pointer"
                       >
-                        <Check className="h-3 w-3" />
-                        <span>Save & Approve</span>
+                        {processingId === item.id ? (
+                          <>
+                            <span className="h-3 w-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            <span>Saving...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Check className="h-3 w-3" />
+                            <span>Save & Approve</span>
+                          </>
+                        )}
                       </button>
                     </div>
                   </div>
@@ -134,26 +179,50 @@ export function ApprovalQueueModal({
                   <div className="flex items-center justify-end gap-2 pt-1">
                     <button
                       type="button"
+                      disabled={!!processingId}
                       onClick={() => onSkip(item.id)}
-                      className="px-2.5 py-1 rounded-control text-xs text-mutedText hover:text-ink hover:bg-ground border border-transparent hover:border-line"
+                      className="px-2.5 py-1 rounded-control text-xs text-mutedText hover:text-ink hover:bg-ground border border-transparent hover:border-line cursor-pointer disabled:opacity-50"
                     >
                       Skip
                     </button>
+                    {onReject && (
+                      <button
+                        type="button"
+                        disabled={processingId === item.id}
+                        onClick={() => handleRejectClick(item.id)}
+                        className="px-2.5 py-1 rounded-control text-xs text-danger hover:bg-danger/10 border border-danger/20 cursor-pointer disabled:opacity-50 font-medium"
+                      >
+                        {processingId === item.id ? "Rejecting..." : "Reject"}
+                      </button>
+                    )}
+                    {item.kind !== "ATTENDANCE" && (
+                      <button
+                        type="button"
+                        disabled={!!processingId}
+                        onClick={() => handleStartEdit(item)}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-control text-xs text-ink bg-surface border border-line hover:bg-ground cursor-pointer disabled:opacity-50"
+                      >
+                        <Edit2 className="h-3 w-3" />
+                        <span>Edit</span>
+                      </button>
+                    )}
                     <button
                       type="button"
-                      onClick={() => handleStartEdit(item)}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-control text-xs text-ink bg-surface border border-line hover:bg-ground"
+                      disabled={processingId === item.id}
+                      onClick={() => handleApproveClick(item.id, item.draftText)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-control bg-primary disabled:opacity-60 disabled:cursor-not-allowed text-white text-xs font-semibold hover:bg-primary/90 shadow-2xs cursor-pointer"
                     >
-                      <Edit2 className="h-3 w-3" />
-                      <span>Edit</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onApprove(item.id, item.draftText)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-control bg-primary text-white text-xs font-semibold hover:bg-primary/90 shadow-2xs"
-                    >
-                      <Send className="h-3 w-3" />
-                      <span>Approve & Send</span>
+                      {processingId === item.id ? (
+                        <>
+                          <span className="h-3 w-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          <span>Approving...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Send className="h-3 w-3" />
+                          <span>Approve</span>
+                        </>
+                      )}
                     </button>
                   </div>
                 )}

@@ -23,7 +23,7 @@ export function CalendarView({ events, onAddEvent }: CalendarViewProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newKind, setNewKind] = useState<CalendarEvent["kind"]>("MEETING");
-  const [newDate, setNewDate] = useState("2026-09-25");
+  const [newDate, setNewDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [newTime, setNewTime] = useState("11:00 AM");
   const [newLocation, setNewLocation] = useState("");
 

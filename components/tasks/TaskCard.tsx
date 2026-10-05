@@ -3,7 +3,7 @@
 import { Task, User, Priority, TaskMode, TaskStatus } from "@prisma/client";
 import { formatOrgDate } from "@/lib/time";
 import { CheckCircle2, Circle, Clock, ArrowRight, AlertTriangle, UserCheck } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface TaskWithRelations extends Task {
   owner?: User | null;
@@ -20,6 +20,10 @@ export function TaskCard({ task, currentUserId, onStatusChange, onPassTurn }: Ta
   const [status, setStatus] = useState<TaskStatus>(task.status);
   const isDone = status === TaskStatus.DONE;
   const isOverdue = task.dueAt && new Date(task.dueAt) < new Date() && !isDone;
+
+  useEffect(() => {
+    setStatus(task.status);
+  }, [task.status]);
 
   const toggleDone = () => {
     const nextStatus = isDone ? TaskStatus.TODO : TaskStatus.DONE;
@@ -38,11 +42,17 @@ export function TaskCard({ task, currentUserId, onStatusChange, onPassTurn }: Ta
     <div className="p-3.5 bg-surface rounded-card border border-line hover:border-mutedText/40 transition-all shadow-xs space-y-2 group">
       {/* Top Row: Checkbox, Title, and ID */}
       <div className="flex items-start justify-between gap-2">
-        <div className="flex items-start gap-2.5 flex-1 min-w-0">
+        <div
+          onClick={toggleDone}
+          className="flex items-start gap-2.5 flex-1 min-w-0 cursor-pointer select-none"
+        >
           <button
             type="button"
-            onClick={toggleDone}
-            className="mt-0.5 text-mutedText hover:text-primary transition-colors shrink-0"
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleDone();
+            }}
+            className="mt-0.5 text-mutedText hover:text-primary transition-colors shrink-0 cursor-pointer"
             aria-label={`Mark task T-${task.number} ${isDone ? "incomplete" : "done"}`}
           >
             {isDone ? (
@@ -53,8 +63,8 @@ export function TaskCard({ task, currentUserId, onStatusChange, onPassTurn }: Ta
           </button>
           <div className="flex-1 min-w-0">
             <span
-              className={`text-xs font-medium leading-snug line-clamp-2 ${
-                isDone ? "line-through text-mutedText" : "text-ink"
+              className={`text-xs font-medium leading-snug line-clamp-2 transition-colors ${
+                isDone ? "line-through text-mutedText" : "text-ink group-hover:text-primary"
               }`}
             >
               {task.title}

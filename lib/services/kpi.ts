@@ -1,6 +1,6 @@
 /**
  * IT Command Center — Authoritative KPI & JPA Calculation Engine
- * Matches formulas strictly per SPEC §13.1 & §13.2
+ * Matches formulas strictly per SPEC §13.1 & §13.2 (v1.1)
  */
 
 export interface TaskRecord {
@@ -9,6 +9,8 @@ export interface TaskRecord {
   dueAt?: Date | null;
   doneAt?: Date | null;
   source?: string;
+  estimateHours?: number | null;
+  actualMinutes?: number | null;
 }
 
 export interface SiteCheckRecord {
@@ -16,15 +18,26 @@ export interface SiteCheckRecord {
 }
 
 export interface JpaWeights {
-  delivery: number; // default 0.25
-  timeliness: number; // default 0.25
-  reliability: number; // default 0.15
-  responsiveness: number; // default 0.10
-  quality: number; // default 0.10
-  leadReview: number; // default 0.15
+  delivery: number; // v1.1: 0.20
+  timeliness: number; // v1.1: 0.20
+  reliability: number; // v1.1: 0.10
+  attendance?: number; // v1.1: 0.10
+  responsiveness: number; // v1.1: 0.10
+  quality: number; // v1.1: 0.15
+  leadReview: number; // v1.1: 0.15
 }
 
 export const DEFAULT_JPA_WEIGHTS: JpaWeights = {
+  delivery: 0.20,
+  timeliness: 0.20,
+  reliability: 0.10,
+  attendance: 0.10,
+  responsiveness: 0.10,
+  quality: 0.15,
+  leadReview: 0.15,
+};
+
+export const V10_JPA_WEIGHTS: JpaWeights = {
   delivery: 0.25,
   timeliness: 0.25,
   reliability: 0.15,
@@ -100,6 +113,42 @@ export function calculateWebsiteUptime(checks: SiteCheckRecord[]): number {
 }
 
 /**
+ * v1.1 KPI: Estimate accuracy % (tasks where actual <= 120% of estimate / total such tasks * 100)
+ */
+export function calculateEstimateAccuracy(
+  tasks: { estimateHours: number | null; actualMinutes: number | null }[]
+): number {
+  const eligible = tasks.filter(
+    (t) => t.estimateHours != null && t.estimateHours > 0 && t.actualMinutes != null && t.actualMinutes > 0
+  );
+  if (eligible.length === 0) return 100;
+
+  const accurate = eligible.filter((t) => {
+    const estMins = t.estimateHours! * 60;
+    return t.actualMinutes! <= estMins * 1.2;
+  }).length;
+
+  return Math.round((accurate / eligible.length) * 100);
+}
+
+/**
+ * v1.1 KPI: Average feedback rating (mean of 1-5 ratings)
+ */
+export function calculateAverageFeedbackRating(ratings: number[]): number {
+  if (!ratings || ratings.length === 0) return 0.0;
+  const sum = ratings.reduce((acc, r) => acc + r, 0);
+  return Number((sum / ratings.length).toFixed(1));
+}
+
+/**
+ * v1.1 KPI: Rework rate % (rework count / total feedback count * 100)
+ */
+export function calculateReworkRate(reworkCount: number, totalCount: number): number {
+  if (totalCount <= 0) return 0.0;
+  return Number(((reworkCount / totalCount) * 100).toFixed(1));
+}
+
+/**
  * 5-point scale mapper for JPA metrics
  */
 export function mapPercentageToScore(pct: number): number {
@@ -121,13 +170,18 @@ export function calculateJpaOverallScore(
     responsiveness: number;
     quality: number;
     leadReview: number;
+    attendance?: number;
   },
   weights: JpaWeights = DEFAULT_JPA_WEIGHTS
 ): number {
+  const attWeight = weights.attendance ?? 0;
+  const attScore = scores.attendance ?? 5.0;
+
   const sum =
     scores.delivery * weights.delivery +
     scores.timeliness * weights.timeliness +
     scores.reliability * weights.reliability +
+    attScore * attWeight +
     scores.responsiveness * weights.responsiveness +
     scores.quality * weights.quality +
     scores.leadReview * weights.leadReview;
@@ -155,7 +209,7 @@ export function formatReportFileName(params: {
   audience: string;
   scope: string;
   periodTag: string;
-  extension: "pdf" | "xlsx" | "docx";
+  extension: "pdf" | "csv" | "xlsx" | "docx";
 }): string {
   const clean = (s: string) => s.replace(/[^a-zA-Z0-9_-]/g, "");
   return `IT_${clean(params.type)}_${clean(params.audience)}_${clean(params.scope)}_${clean(params.periodTag)}.${params.extension}`;

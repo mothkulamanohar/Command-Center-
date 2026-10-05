@@ -87,6 +87,30 @@ export async function postDailyUpdate(
       },
     });
 
+    // Post to user's team channels per SPEC F-UPD-02
+    try {
+      const memberships = await tx.teamMember.findMany({
+        where: { userId: actor.id },
+        include: { team: { include: { channels: true } } },
+      });
+
+      for (const m of memberships) {
+        for (const ch of m.team.channels) {
+          await tx.message.create({
+            data: {
+              channelId: ch.id,
+              authorId: actor.id,
+              kind: "UPDATE",
+              body: `📢 **Daily Update — ${actor.name}**\n\n**Done:**\n${data.done}\n\n**Next:**\n${data.next}${data.blockers ? `\n\n**Blockers:**\n${data.blockers}` : ""}`,
+              meta: { done: data.done, next: data.next, blockers: data.blockers },
+            },
+          });
+        }
+      }
+    } catch {
+      // Continue even if team channels don't exist yet
+    }
+
     await logAudit(tx, {
       actorId: actor.id,
       action: "POST_DAILY_UPDATE",

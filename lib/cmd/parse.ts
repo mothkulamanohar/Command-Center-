@@ -2,14 +2,19 @@ import { ParseResult, CommandSlots } from "./intents";
 import { parseDateExpression } from "./dates";
 import { matchQueryAndNav, matchOrgAndComms } from "./parse-helpers";
 import { matchTaskActions } from "./parse-actions";
+import { matchV11Intents } from "./parse-v11";
 
 /**
  * Rule-based Plain-English Command Parser per SPEC §8.2 & §8.3
- * Recognizes all 27 canonical intents and Tenglish variants.
+ * Recognizes all canonical intents and Tenglish variants.
  */
 export function parseCommand(rawText: string): ParseResult {
   const text = rawText.trim();
   const lower = text.toLowerCase();
+
+  // 0. v1.1 intents (To-do, Attendance, Feedback, TimeLog, Certificates)
+  const v11Result = matchV11Intents(text, lower);
+  if (v11Result) return v11Result;
 
   // 1. Queries and navigation
   const queryResult = matchQueryAndNav(text, lower);

@@ -1,7 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { Building2, Layers, Plus, CheckCircle2, ShieldCheck } from "lucide-react";
+import { useState, useEffect } from "react";
+import { toast } from "sonner";
+import { Building2, Layers, Plus, CheckCircle2, ShieldCheck, X, Server, Network } from "lucide-react";
+import {
+  getCampusesAction,
+  createCampusAction,
+  toggleCampusSupportModeAction,
+} from "./actions";
 
 export interface CampusItem {
   id: string;
@@ -9,45 +15,70 @@ export interface CampusItem {
   code: string;
   mode: "ONSITE" | "REMOTE";
   leadName: string;
-  teamsCount: number;
+  userCount?: number;
+  teamCount?: number;
+  status: string;
 }
 
-const INITIAL_CAMPUSES: CampusItem[] = [
-  { id: "c-1", name: "SMRU Main Campus", code: "SMRU", mode: "ONSITE", leadName: "Hari", teamsCount: 3 },
-  { id: "c-2", name: "Hyderabad Group", code: "HYD", mode: "REMOTE", leadName: "Sri", teamsCount: 1 },
-  { id: "c-3", name: "Chebrol Campus", code: "CHB", mode: "ONSITE", leadName: "Hari", teamsCount: 1 },
-  { id: "c-4", name: "Guntur Campus", code: "GNT", mode: "REMOTE", leadName: "Hari", teamsCount: 1 },
-  { id: "c-5", name: "St. Mary's Women's Campus", code: "SMW", mode: "ONSITE", leadName: "Hari", teamsCount: 1 },
-];
-
 export default function SetupPage() {
-  const [campuses, setCampuses] = useState<CampusItem[]>(INITIAL_CAMPUSES);
-  const [toast, setToast] = useState<string | null>(null);
+  const [campuses, setCampuses] = useState<CampusItem[]>([]);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  // New campus form state
+  const [newName, setNewName] = useState("");
+  const [newCode, setNewCode] = useState("");
+  const [newMode, setNewMode] = useState<"ONSITE" | "REMOTE">("ONSITE");
+  const [newLead, setNewLead] = useState("Hari");
+  const [newSubnet, setNewSubnet] = useState("10.20.0.0/16");
+  const [newRacks, setNewRacks] = useState(2);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const showToast = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(null), 3000);
+  const loadCampuses = async () => {
+    const res = await getCampusesAction();
+    if (res.success && res.data) {
+      setCampuses(res.data as any);
+    }
+    setIsLoading(false);
   };
 
-  const toggleMode = (id: string) => {
-    setCampuses((prev) =>
-      prev.map((c) =>
-        c.id === id
-          ? { ...c, mode: c.mode === "ONSITE" ? "REMOTE" : "ONSITE" }
-          : c
-      )
-    );
-    showToast("Campus support mode updated");
+  useEffect(() => {
+    loadCampuses();
+  }, []);
+
+  const toggleMode = async (id: string) => {
+    const res = await toggleCampusSupportModeAction(id);
+    if (res.success) {
+      toast.success("Campus support mode updated");
+      loadCampuses();
+    } else {
+      toast.error(res.error || "Failed to update support mode");
+    }
+  };
+
+  const handleCreateCampus = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newName.trim() || !newCode.trim()) return;
+
+    const res = await createCampusAction({
+      name: newName.trim(),
+      code: newCode.trim().toUpperCase(),
+      mode: newMode,
+      leadName: newLead,
+    });
+
+    if (res.success) {
+      setIsAddModalOpen(false);
+      setNewName("");
+      setNewCode("");
+      toast.success(`Campus "${newName}" created successfully`);
+      loadCampuses();
+    } else {
+      toast.error(res.error || "Failed to create campus");
+    }
   };
 
   return (
     <div className="space-y-6">
-      {toast && (
-        <div className="fixed bottom-6 right-6 z-50 bg-ink text-surface px-4 py-2.5 rounded-control text-xs font-medium shadow-panel border border-line flex items-center gap-2 animate-in fade-in">
-          <CheckCircle2 className="h-4 w-4 text-primary" />
-          <span>{toast}</span>
-        </div>
-      )}
+      
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -74,6 +105,14 @@ export default function SetupPage() {
               Physical institutions with On-site and Remote IT support coverage
             </p>
           </div>
+          <button
+            type="button"
+            onClick={() => setIsAddModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary hover:bg-primary-hover text-white rounded-control text-xs font-semibold shadow-2xs cursor-pointer"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            <span>Add Campus</span>
+          </button>
         </div>
 
         <div className="overflow-x-auto">
@@ -105,12 +144,12 @@ export default function SetupPage() {
                     </span>
                   </td>
                   <td className="py-3 px-3 text-mutedText">{c.leadName}</td>
-                  <td className="py-3 px-3 font-mono text-[11px]">{c.teamsCount}</td>
+                  <td className="py-3 px-3 font-mono text-[11px]">{c.teamCount}</td>
                   <td className="py-3 px-4 text-right">
                     <button
                       type="button"
                       onClick={() => toggleMode(c.id)}
-                      className="px-2.5 py-1 rounded-control bg-surface border border-line hover:bg-ground text-[11px] font-mono text-ink transition-colors"
+                      className="px-2.5 py-1 rounded-control bg-surface border border-line hover:bg-ground text-[11px] font-mono text-ink transition-colors cursor-pointer"
                     >
                       Set to {c.mode === "ONSITE" ? "Remote" : "Onsite"}
                     </button>
@@ -159,6 +198,118 @@ export default function SetupPage() {
           </div>
         </div>
       </div>
+
+      {/* Add Campus Modal */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-surface rounded-panel border border-line w-full max-w-md shadow-panel p-5 space-y-4 animate-in fade-in">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-ink flex items-center gap-2">
+                <Building2 className="h-4 w-4 text-primary" />
+                <span>Register New Campus</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsAddModalOpen(false)}
+                className="p-1 rounded text-mutedText hover:text-ink cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateCampus} className="space-y-3 text-xs">
+              <div>
+                <label className="block font-semibold text-ink mb-1">Campus Name</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Kukatpally Technology Center"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  className="w-full p-2 bg-ground border border-line rounded-control text-ink text-xs focus:outline-none focus:border-primary"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-ink mb-1">Campus Code</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. KPC"
+                    value={newCode}
+                    onChange={(e) => setNewCode(e.target.value)}
+                    className="w-full p-2 bg-ground border border-line rounded-control text-ink font-mono text-xs uppercase focus:outline-none focus:border-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-ink mb-1">Support Mode</label>
+                  <select
+                    value={newMode}
+                    onChange={(e) => setNewMode(e.target.value as "ONSITE" | "REMOTE")}
+                    className="w-full p-2 bg-ground border border-line rounded-control text-ink text-xs"
+                  >
+                    <option value="ONSITE">ONSITE (Dedicated Lead)</option>
+                    <option value="REMOTE">REMOTE (Centralized)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-ink mb-1">Assigned Lead</label>
+                  <select
+                    value={newLead}
+                    onChange={(e) => setNewLead(e.target.value)}
+                    className="w-full p-2 bg-ground border border-line rounded-control text-ink text-xs"
+                  >
+                    <option value="Hari">Hari (Coordinator)</option>
+                    <option value="Sri">Sri (Manager)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-semibold text-ink mb-1">Subnet CIDR</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 10.20.0.0/16"
+                    value={newSubnet}
+                    onChange={(e) => setNewSubnet(e.target.value)}
+                    className="w-full p-2 bg-ground border border-line rounded-control text-ink font-mono text-xs focus:outline-none focus:border-primary"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-ink mb-1">Server Room Rack Count</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="50"
+                  value={newRacks}
+                  onChange={(e) => setNewRacks(Number(e.target.value))}
+                  className="w-full p-2 bg-ground border border-line rounded-control text-ink font-mono text-xs focus:outline-none focus:border-primary"
+                />
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2 border-t border-line">
+                <button
+                  type="button"
+                  onClick={() => setIsAddModalOpen(false)}
+                  className="px-3 py-1.5 text-mutedText hover:text-ink cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-1.5 bg-primary text-white font-semibold rounded-control hover:bg-primary-hover shadow-2xs cursor-pointer"
+                >
+                  Create Campus
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

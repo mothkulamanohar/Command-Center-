@@ -4,7 +4,7 @@ import { useState } from "react";
 import { TaskChip } from "./TaskChip";
 import { KudosCard } from "./KudosCard";
 import { extractTaskRefs } from "@/lib/services/chat";
-import { MoreHorizontal, Smile, CheckSquare, PlusCircle } from "lucide-react";
+import { MoreHorizontal, Smile, CheckSquare, PlusCircle, Copy, Check } from "lucide-react";
 
 export interface ChatMessage {
   id: string;
@@ -31,6 +31,7 @@ export function MessageItem({
   onReact,
 }: MessageItemProps) {
   const [showMenu, setShowMenu] = useState(false);
+  const [copied, setCopied] = useState(false);
   const taskRefs = extractTaskRefs(message.body);
 
   if (message.kind === "KUDOS") {
@@ -63,7 +64,7 @@ export function MessageItem({
           <button
             type="button"
             onClick={() => onReact?.(message.id, "👍")}
-            className="p-1 hover:bg-ground rounded text-xs text-mutedText hover:text-ink"
+            className="p-1 hover:bg-ground rounded text-xs text-mutedText hover:text-ink cursor-pointer"
             aria-label="React thumbs up"
           >
             👍
@@ -71,15 +72,28 @@ export function MessageItem({
           <button
             type="button"
             onClick={() => onReact?.(message.id, "✔")}
-            className="p-1 hover:bg-ground rounded text-xs text-mutedText hover:text-ink"
+            className="p-1 hover:bg-ground rounded text-xs text-mutedText hover:text-ink cursor-pointer"
             aria-label="React check"
           >
             ✔
           </button>
           <button
             type="button"
+            onClick={() => {
+              navigator.clipboard?.writeText(message.body);
+              setCopied(true);
+              setTimeout(() => setCopied(false), 1500);
+            }}
+            className="p-1 hover:bg-ground rounded text-xs text-mutedText hover:text-ink cursor-pointer"
+            aria-label="Copy message"
+            title={copied ? "Copied!" : "Copy message"}
+          >
+            {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+          </button>
+          <button
+            type="button"
             onClick={() => onMakeTask?.(message.body)}
-            className="p-1 hover:bg-ground rounded text-xs text-mutedText hover:text-ink"
+            className="p-1 hover:bg-ground rounded text-xs text-mutedText hover:text-ink cursor-pointer"
             aria-label="Convert message to Task"
             title="Make Task"
           >
@@ -88,7 +102,7 @@ export function MessageItem({
           <button
             type="button"
             onClick={() => onMakeRequest?.(message.body)}
-            className="p-1 hover:bg-ground rounded text-xs text-mutedText hover:text-ink"
+            className="p-1 hover:bg-ground rounded text-xs text-mutedText hover:text-ink cursor-pointer"
             aria-label="Convert message to Request"
             title="Make Request"
           >

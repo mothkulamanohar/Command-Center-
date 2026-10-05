@@ -7,12 +7,13 @@ import { useState } from "react";
 
 interface InboxListProps {
   requests: Request[];
+  activeUsers?: { id: string; name: string }[];
   onAccept?: (requestId: string) => void;
   onDelegate?: (requestId: string, delegateToUserId: string) => void;
   onDecline?: (requestId: string, reason: string) => void;
 }
 
-export function InboxList({ requests, onAccept, onDelegate, onDecline }: InboxListProps) {
+export function InboxList({ requests, activeUsers = [], onAccept, onDelegate, onDecline }: InboxListProps) {
   const [selectedRequest, setSelectedRequest] = useState<Request | null>(null);
   const [actionType, setActionType] = useState<"DELEGATE" | "DECLINE" | null>(null);
   const [reason, setReason] = useState("");
@@ -73,7 +74,7 @@ export function InboxList({ requests, onAccept, onDelegate, onDecline }: InboxLi
               <button
                 type="button"
                 onClick={() => onAccept?.(req.id)}
-                className="inline-flex items-center gap-1 px-2.5 py-1 bg-primary text-white rounded-control text-xs font-medium hover:bg-primary-hover transition-colors"
+                className="inline-flex items-center gap-1 px-2.5 py-1 bg-primary text-white rounded-control text-xs font-medium hover:bg-primary-hover transition-colors cursor-pointer shadow-xs"
               >
                 <Check className="h-3.5 w-3.5" />
                 <span>Accept</span>
@@ -84,7 +85,7 @@ export function InboxList({ requests, onAccept, onDelegate, onDecline }: InboxLi
                   setSelectedRequest(req);
                   setActionType("DELEGATE");
                 }}
-                className="inline-flex items-center gap-1 px-2.5 py-1 bg-surface border border-line text-ink rounded-control text-xs font-medium hover:bg-surface-alt transition-colors"
+                className="inline-flex items-center gap-1 px-2.5 py-1 bg-surface border border-line text-ink rounded-control text-xs font-medium hover:bg-surface-alt transition-colors cursor-pointer"
               >
                 <UserPlus className="h-3.5 w-3.5" />
                 <span>Delegate</span>
@@ -95,7 +96,7 @@ export function InboxList({ requests, onAccept, onDelegate, onDecline }: InboxLi
                   setSelectedRequest(req);
                   setActionType("DECLINE");
                 }}
-                className="inline-flex items-center gap-1 px-2 py-1 text-danger hover:bg-danger-tint rounded-control text-xs transition-colors"
+                className="inline-flex items-center gap-1 px-2 py-1 text-danger hover:bg-danger-tint rounded-control text-xs transition-colors cursor-pointer"
               >
                 <X className="h-3.5 w-3.5" />
                 <span>Decline</span>
@@ -129,15 +130,30 @@ export function InboxList({ requests, onAccept, onDelegate, onDecline }: InboxLi
             ) : (
               <div>
                 <label className="block text-xs font-mono text-mutedText mb-1">
-                  Assignee user ID / name:
+                  Assignee team member:
                 </label>
-                <input
-                  type="text"
-                  value={delegateTo}
-                  onChange={(e) => setDelegateTo(e.target.value)}
-                  placeholder="e.g. Hari"
-                  className="w-full p-2 bg-ground border border-line rounded-control text-xs font-mono text-ink focus:outline-none focus:border-primary"
-                />
+                {activeUsers && activeUsers.length > 0 ? (
+                  <select
+                    value={delegateTo}
+                    onChange={(e) => setDelegateTo(e.target.value)}
+                    className="w-full p-2 bg-ground border border-line rounded-control text-xs font-mono text-ink focus:outline-none focus:border-primary"
+                  >
+                    <option value="">Select a team member...</option>
+                    {activeUsers.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    value={delegateTo}
+                    onChange={(e) => setDelegateTo(e.target.value)}
+                    placeholder="e.g. Hari"
+                    className="w-full p-2 bg-ground border border-line rounded-control text-xs font-mono text-ink focus:outline-none focus:border-primary"
+                  />
+                )}
               </div>
             )}
 
@@ -148,14 +164,14 @@ export function InboxList({ requests, onAccept, onDelegate, onDecline }: InboxLi
                   setSelectedRequest(null);
                   setActionType(null);
                 }}
-                className="px-3 py-1.5 text-xs text-mutedText hover:text-ink"
+                className="px-3 py-1.5 text-xs text-mutedText hover:text-ink cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={handleConfirmAction}
-                className="px-4 py-1.5 bg-primary text-white text-xs font-medium rounded-control hover:bg-primary-hover shadow-xs"
+                className="px-4 py-1.5 bg-primary text-white text-xs font-medium rounded-control hover:bg-primary-hover shadow-xs cursor-pointer"
               >
                 Confirm
               </button>

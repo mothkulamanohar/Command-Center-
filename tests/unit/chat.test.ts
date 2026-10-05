@@ -23,7 +23,7 @@ describe("Chat Message Parsing (SPEC §11)", () => {
   });
 
   it("extracts URLs from messages for the Links board (F-CHAT-09)", () => {
-    const text = "Check out the new design at https://smru.edu.in/admissions and staging https://dev.smru.in";
+    const text = "Check out the new design at https://smru.edu.in/admissions and staging https://dev.smru.in.";
     const urls = extractUrls(text);
     expect(urls).toEqual([
       "https://smru.edu.in/admissions",

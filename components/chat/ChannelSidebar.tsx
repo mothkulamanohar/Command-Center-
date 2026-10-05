@@ -10,6 +10,8 @@ export interface ChannelItem {
   kind: "TEAM" | "GROUP" | "DM" | "ANNOUNCE";
   isPrivate?: boolean;
   unreadCount?: number;
+  presentCount?: number;
+  totalMembers?: number;
 }
 
 export interface DirectMessageUser {
@@ -17,6 +19,7 @@ export interface DirectMessageUser {
   name: string;
   role: string;
   isOnline?: boolean;
+  attendanceStatus?: "PRESENT" | "LATE" | "ON_LEAVE" | "NOT_IN";
   unreadCount?: number;
 }
 
@@ -28,6 +31,8 @@ interface ChannelSidebarProps {
   onSelectChannel: (channel: ChannelItem) => void;
   onSelectDm: (user: DirectMessageUser) => void;
   onOpenLinks: () => void;
+  onAddChannel?: () => void;
+  onAddDm?: () => void;
 }
 
 export function ChannelSidebar({
@@ -38,6 +43,8 @@ export function ChannelSidebar({
   onSelectChannel,
   onSelectDm,
   onOpenLinks,
+  onAddChannel,
+  onAddDm,
 }: ChannelSidebarProps) {
   const [filter, setFilter] = useState("");
 
@@ -97,6 +104,7 @@ export function ChannelSidebar({
             </span>
             <button
               type="button"
+              onClick={onAddChannel}
               className="p-0.5 hover:bg-surface rounded text-mutedText hover:text-ink transition-colors"
               title="New Channel"
             >
@@ -125,11 +133,26 @@ export function ChannelSidebar({
                     <Icon className={`h-3.5 w-3.5 shrink-0 ${isActive ? "text-primary" : "text-mutedText"}`} />
                     <span className="truncate">{c.name}</span>
                   </div>
-                  {c.unreadCount && c.unreadCount > 0 ? (
-                    <span className="ml-1.5 bg-danger text-white text-[10px] font-mono px-1.5 py-0.2 rounded-full font-bold">
-                      {c.unreadCount}
-                    </span>
-                  ) : null}
+                  <div className="flex items-center gap-1.5 shrink-0 ml-1">
+                    {c.totalMembers !== undefined && (
+                      <span
+                        className={`inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[10px] font-mono font-semibold transition-colors ${
+                          isActive
+                            ? "bg-primary/20 text-primary border border-primary/30"
+                            : "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20"
+                        }`}
+                        title={`${c.presentCount ?? 0} of ${c.totalMembers} members present today`}
+                      >
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        <span>{c.presentCount ?? 0}/{c.totalMembers}</span>
+                      </span>
+                    )}
+                    {c.unreadCount && c.unreadCount > 0 ? (
+                      <span className="ml-1 bg-danger text-white text-[10px] font-mono px-1.5 py-0.2 rounded-full font-bold">
+                        {c.unreadCount}
+                      </span>
+                    ) : null}
+                  </div>
                 </button>
               );
             })}
@@ -144,6 +167,7 @@ export function ChannelSidebar({
             </span>
             <button
               type="button"
+              onClick={onAddDm}
               className="p-0.5 hover:bg-surface rounded text-mutedText hover:text-ink transition-colors"
               title="New Direct Message"
             >
@@ -172,17 +196,30 @@ export function ChannelSidebar({
                       </div>
                       <span
                         className={`absolute -bottom-0.5 -right-0.5 h-1.5 w-1.5 rounded-full border border-surface ${
-                          u.isOnline ? "bg-primary" : "bg-mutedText/40"
+                          u.attendanceStatus === "ON_LEAVE"
+                            ? "bg-purple-500"
+                            : u.attendanceStatus === "LATE"
+                            ? "bg-amber-500"
+                            : u.attendanceStatus === "PRESENT" || u.isOnline
+                            ? "bg-primary"
+                            : "bg-mutedText/40"
                         }`}
                       />
                     </div>
                     <span className="truncate">{u.name}</span>
                   </div>
-                  {u.unreadCount && u.unreadCount > 0 ? (
-                    <span className="ml-1.5 bg-danger text-white text-[10px] font-mono px-1.5 py-0.2 rounded-full font-bold">
-                      {u.unreadCount}
-                    </span>
-                  ) : null}
+                  <div className="flex items-center gap-1">
+                    {u.attendanceStatus === "ON_LEAVE" ? (
+                      <span className="text-[9px] bg-purple-500/10 text-purple-600 border border-purple-500/20 px-1 py-0.2 rounded font-mono">
+                        Leave
+                      </span>
+                    ) : null}
+                    {u.unreadCount && u.unreadCount > 0 ? (
+                      <span className="ml-1 bg-danger text-white text-[10px] font-mono px-1.5 py-0.2 rounded-full font-bold">
+                        {u.unreadCount}
+                      </span>
+                    ) : null}
+                  </div>
                 </button>
               );
             })}

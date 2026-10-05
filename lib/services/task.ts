@@ -24,6 +24,7 @@ export const CreateTaskSchema = z.object({
   tags: z.array(z.string()).default([]),
   source: z.nativeEnum(TaskSource).default(TaskSource.MANUAL),
   checklist: z.array(z.object({ text: z.string(), done: z.boolean() })).default([]),
+  estimateHours: z.number().optional(),
 });
 
 export const UpdateTaskSchema = z.object({
@@ -31,8 +32,10 @@ export const UpdateTaskSchema = z.object({
   status: z.nativeEnum(TaskStatus).optional(),
   priority: z.nativeEnum(Priority).optional(),
   dueAt: z.date().nullable().optional(),
+  startAt: z.date().nullable().optional(),
   ownerId: z.string().optional(),
   blockedReason: z.string().optional(),
+  estimateHours: z.number().nullable().optional(),
 });
 
 /**
@@ -80,6 +83,7 @@ export async function createTask(actor: UserContext, input: z.input<typeof Creat
         tags: data.tags,
         source: isLeadership ? TaskSource.LEADERSHIP : data.source,
         checklist: (data.checklist as unknown as Prisma.InputJsonValue) ?? [],
+        estimateHours: data.estimateHours,
       },
     });
 
@@ -139,17 +143,54 @@ export async function passTaskTurn(
 }
 
 /**
- * F-TASK-05: Mark task done
+ * F-TASK-05: Mark task done (v1.1: stops timer, queues feedback)
  */
 export async function markTaskDone(actor: UserContext, taskId: string) {
+  const existing = await db.task.findUnique({
+    where: { id: taskId },
+    include: { owner: true },
+  });
+  if (!existing) throw new Error("Task not found");
+
+  // Check if eligible for feedback per SPEC §7.5 (mode=SOLO, owner is not Guest)
+  const shouldQueueFeedback =
+    existing.mode === TaskMode.SOLO &&
+    existing.owner?.role !== "GUEST";
+
   return await db.$transaction(async (tx: Prisma.TransactionClient) => {
+    const now = new Date();
+    let actualMinutes = existing.actualMinutes;
+
+    // 1. Stop any running timer on this task per F-TASK-05 / F-DUR-03
+    if (tx.timeLog) {
+      const runningTimers = await tx.timeLog.findMany({
+        where: { taskId, endedAt: null },
+      });
+      for (const timer of runningTimers) {
+        const minutes = Math.max(1, Math.round((now.getTime() - timer.startedAt.getTime()) / 60000));
+        await tx.timeLog.update({
+          where: { id: timer.id },
+          data: { endedAt: now, minutes },
+        });
+      }
+
+      // Recompute total actualMinutes
+      const allLogs = await tx.timeLog.findMany({
+        where: { taskId, endedAt: { not: null } },
+        select: { minutes: true },
+      });
+      actualMinutes = allLogs.reduce((acc, l) => acc + (l.minutes || 0), 0);
+    }
+
     const task = await tx.task.update({
       where: { id: taskId },
       data: {
         status: TaskStatus.DONE,
-        doneAt: new Date(),
+        doneAt: now,
         doneById: actor.id,
-        lastActivityAt: new Date(),
+        actualMinutes,
+        feedbackState: shouldQueueFeedback ? "PENDING" : existing.feedbackState,
+        lastActivityAt: now,
       },
     });
 

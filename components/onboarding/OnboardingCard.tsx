@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import {
   CheckCircle2,
   Circle,
@@ -68,13 +69,6 @@ export function OnboardingCard({ onOpenDailyUpdate }: OnboardingCardProps) {
   ]);
 
   const [activeModal, setActiveModal] = useState<string | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
-
-  const showToast = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(null), 3000);
-  };
-
   const markStepDone = (id: string) => {
     setSteps((prev) => prev.map((s) => (s.id === id ? { ...s, done: true } : s)));
   };
@@ -89,14 +83,14 @@ export function OnboardingCard({ onOpenDailyUpdate }: OnboardingCardProps) {
         try {
           const perm = await Notification.requestPermission();
           markStepDone("notifs");
-          showToast(perm === "granted" ? "Push notifications enabled!" : "Notification preference updated.");
+          toast.success(perm === "granted" ? "Push notifications enabled!" : "Notification preference updated.");
         } catch {
           markStepDone("notifs");
-          showToast("Push notification preference saved.");
+          toast.success("Push notification preference saved.");
         }
       } else {
         markStepDone("notifs");
-        showToast("Push notifications ready in PWA mode.");
+        toast.success("Push notifications ready in PWA mode.");
       }
     } else if (stepId === "chat") {
       markStepDone("chat");
@@ -118,12 +112,7 @@ export function OnboardingCard({ onOpenDailyUpdate }: OnboardingCardProps) {
 
   return (
     <>
-      {toast && (
-        <div className="fixed bottom-6 right-6 z-50 bg-ink text-surface px-4 py-2.5 rounded-control text-xs font-medium shadow-panel border border-line flex items-center gap-2 animate-in fade-in">
-          <CheckCircle2 className="h-4 w-4 text-primary" />
-          <span>{toast}</span>
-        </div>
-      )}
+      
 
       {/* Main Checklist Card */}
       <div className="bg-surface rounded-panel border border-line p-5 shadow-xs">
@@ -195,7 +184,7 @@ export function OnboardingCard({ onOpenDailyUpdate }: OnboardingCardProps) {
         onSave={() => {
           markStepDone("photo");
           setActiveModal(null);
-          showToast("Profile photo updated successfully!");
+          toast.success("Profile photo updated successfully!");
         }}
       />
 
@@ -205,7 +194,7 @@ export function OnboardingCard({ onOpenDailyUpdate }: OnboardingCardProps) {
         onConfirm={() => {
           markStepDone("pwa");
           setActiveModal(null);
-          showToast("PWA status verified!");
+          toast.success("PWA status verified!");
         }}
       />
     </>

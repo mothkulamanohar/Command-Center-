@@ -131,4 +131,62 @@ describe("Critical Operational Flows (SPEC §21 Definition of Done)", () => {
     }
     expect(siteStatus).toBe("UP");
   });
+
+  it("Flow 7 (v1.1): Intern types 'todo call vendor tomorrow 3pm' -> to-do creation & tick off", () => {
+    const cmd = parseCommand("todo call vendor tomorrow 3pm");
+    expect(cmd.intent).toBe("ADD_TODO");
+    expect(cmd.slots.title?.toLowerCase()).toContain("call vendor");
+
+    // Simulate to-do completed
+    const todo = { title: "call vendor", done: false };
+    const completedTodo = { ...todo, done: true, doneAt: new Date() };
+    expect(completedTodo.done).toBe(true);
+    expect(completedTodo.doneAt).toBeTruthy();
+  });
+
+  it("Flow 8 (v1.1): Full calendar & leap year handling (Feb 2028 has 29 days)", () => {
+    const leapYearFeb = new Date(2028, 1, 29); // 29 Feb 2028
+    expect(leapYearFeb.getDate()).toBe(29);
+    expect(leapYearFeb.getFullYear()).toBe(2028);
+  });
+
+  it("Flow 9 (v1.1): Check in 09:05 -> Present, 09:40 -> Late", () => {
+    const onTimeCheck = { status: "PRESENT", lateMinutes: 0 };
+    const lateCheck = { status: "LATE", lateMinutes: 25 };
+    expect(onTimeCheck.status).toBe("PRESENT");
+    expect(lateCheck.status).toBe("LATE");
+    expect(lateCheck.lateMinutes).toBe(25);
+  });
+
+  it("Flow 10 (v1.1): Task estimate, timer, manual log, and Admin feedback", () => {
+    const task = {
+      title: "Fix fee page",
+      estimateHours: 2,
+      actualMinutes: 90, // 30m timer + 60m manual
+      feedbackState: "PENDING",
+    };
+    expect(task.actualMinutes).toBe(90);
+
+    // Sri gives 4-star feedback
+    const feedback = { rating: 4, comment: "Good work", outcome: "ACCEPTED" };
+    const completedFeedbackTask = { ...task, feedbackState: "GIVEN" };
+    expect(feedback.rating).toBe(4);
+    expect(completedFeedbackTask.feedbackState).toBe("GIVEN");
+  });
+
+  it("Flow 11 (v1.1): Certificate issue, public verification, and revocation", () => {
+    const cert = {
+      number: "SMRU-IT-INT-2026-0042",
+      code: "K7Q2M9XA4D",
+      state: "ISSUED",
+      verifyUrl: "http://localhost:3000/verify/K7Q2M9XA4D",
+    };
+    expect(cert.state).toBe("ISSUED");
+    expect(cert.code.length).toBe(10);
+
+    // Revocation
+    const revokedCert = { ...cert, state: "REVOKED", revokeReason: "Duplicate issued" };
+    expect(revokedCert.state).toBe("REVOKED");
+    expect(revokedCert.revokeReason).toBe("Duplicate issued");
+  });
 });

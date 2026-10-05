@@ -10,6 +10,9 @@ export interface JprRow {
   highlights: string[];
   risks: string[];
   health: "Good" | "Watch" | "Needs attention";
+  attendancePercent?: number;
+  hoursLogged?: number;
+  avgFeedback?: number;
 }
 
 interface JprTableProps {
@@ -41,6 +44,9 @@ export function JprTable({ rows }: JprTableProps) {
               <th className="py-2.5 px-4">Team & Lead</th>
               <th className="py-2.5 px-3">Done / Planned</th>
               <th className="py-2.5 px-3">Progress</th>
+              <th className="py-2.5 px-3">Attendance</th>
+              <th className="py-2.5 px-3">Hours</th>
+              <th className="py-2.5 px-3">Feedback</th>
               <th className="py-2.5 px-4">Key Highlights</th>
               <th className="py-2.5 px-4">Risks & Blockers</th>
               <th className="py-2.5 px-3">Health</th>
@@ -70,6 +76,18 @@ export function JprTable({ rows }: JprTableProps) {
                       {row.progressPercent}%
                     </span>
                   </div>
+                </td>
+
+                <td className="py-3 px-3 font-mono text-ink font-semibold text-[11px]">
+                  {row.attendancePercent != null ? `${row.attendancePercent}%` : "—"}
+                </td>
+
+                <td className="py-3 px-3 font-mono text-ink font-semibold text-[11px]">
+                  {row.hoursLogged != null ? `${row.hoursLogged}h` : "—"}
+                </td>
+
+                <td className="py-3 px-3 font-mono text-ink font-semibold text-[11px]">
+                  {row.avgFeedback != null ? `${row.avgFeedback} ★` : "—"}
                 </td>
 
                 <td className="py-3 px-4">

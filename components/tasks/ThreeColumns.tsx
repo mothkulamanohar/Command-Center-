@@ -28,7 +28,7 @@ export function ThreeColumns({
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* 1. I Owe */}
-      <div className="bg-surface rounded-panel border border-line p-4 shadow-xs flex flex-col min-h-[380px]">
+      <div id="column-i-owe" className="bg-surface rounded-panel border border-line p-4 shadow-xs flex flex-col min-h-[380px] scroll-mt-20">
         <div className="flex items-center justify-between pb-3 border-b border-line mb-3">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="h-4 w-4 text-primary" />
@@ -60,7 +60,7 @@ export function ThreeColumns({
       </div>
 
       {/* 2. I'm Chasing */}
-      <div className="bg-surface rounded-panel border border-line p-4 shadow-xs flex flex-col min-h-[380px]">
+      <div id="column-im-chasing" className="bg-surface rounded-panel border border-line p-4 shadow-xs flex flex-col min-h-[380px] scroll-mt-20">
         <div className="flex items-center justify-between pb-3 border-b border-line mb-3">
           <div className="flex items-center gap-2">
             <Clock className="h-4 w-4 text-chasing" />
@@ -92,7 +92,7 @@ export function ThreeColumns({
       </div>
 
       {/* 3. Shared */}
-      <div className="bg-surface rounded-panel border border-line p-4 shadow-xs flex flex-col min-h-[380px]">
+      <div id="column-shared" className="bg-surface rounded-panel border border-line p-4 shadow-xs flex flex-col min-h-[380px] scroll-mt-20">
         <div className="flex items-center justify-between pb-3 border-b border-line mb-3">
           <div className="flex items-center gap-2">
             <ArrowRight className="h-4 w-4 text-shared" />

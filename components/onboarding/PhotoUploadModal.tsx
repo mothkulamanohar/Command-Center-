@@ -1,6 +1,7 @@
 "use client";
 
-import { Camera, X, Upload } from "lucide-react";
+import { useState } from "react";
+import { Camera, X, Upload, Loader2, Check } from "lucide-react";
 
 interface PhotoUploadModalProps {
   isOpen: boolean;
@@ -9,7 +10,25 @@ interface PhotoUploadModalProps {
 }
 
 export function PhotoUploadModal({ isOpen, onClose, onSave }: PhotoUploadModalProps) {
+  const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
   if (!isOpen) return null;
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setSelectedFile(e.target.files[0].name);
+    }
+  };
+
+  const handleSave = () => {
+    if (isSaving) return;
+    setIsSaving(true);
+    setTimeout(() => {
+      onSave();
+      setIsSaving(false);
+    }, 400);
+  };
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
@@ -29,34 +48,55 @@ export function PhotoUploadModal({ isOpen, onClose, onSave }: PhotoUploadModalPr
         </div>
         <div className="text-center py-4 space-y-3">
           <div className="w-20 h-20 rounded-full bg-primary/10 border-2 border-dashed border-primary mx-auto flex items-center justify-center text-primary">
-            <Camera className="h-8 w-8" />
+            {selectedFile ? (
+              <Check className="h-8 w-8 text-primary" />
+            ) : (
+              <Camera className="h-8 w-8" />
+            )}
           </div>
           <p className="text-xs text-mutedText">
-            Choose an image from your device or use camera.
+            {selectedFile
+              ? `Selected: ${selectedFile}`
+              : "Choose an image from your device or use camera."}
           </p>
-          <input type="file" accept="image/*" className="hidden" id="photo-file" />
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            id="photo-file"
+            onChange={handleFileChange}
+          />
           <label
             htmlFor="photo-file"
             className="inline-flex items-center gap-2 px-3.5 py-2 bg-ground hover:bg-surface-alt border border-line text-ink rounded-control text-xs font-medium cursor-pointer"
           >
             <Upload className="h-3.5 w-3.5 text-mutedText" />
-            <span>Select Image File</span>
+            <span>{selectedFile ? "Change Image" : "Select Image File"}</span>
           </label>
         </div>
         <div className="flex justify-end gap-2 pt-2 border-t border-line">
           <button
             type="button"
             onClick={onClose}
-            className="px-3 py-1.5 text-xs text-mutedText hover:text-ink"
+            disabled={isSaving}
+            className="px-3 py-1.5 text-xs text-mutedText hover:text-ink cursor-pointer disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             type="button"
-            onClick={onSave}
-            className="px-4 py-1.5 bg-primary text-white rounded-control text-xs font-medium shadow-xs"
+            onClick={handleSave}
+            disabled={isSaving}
+            className="px-4 py-1.5 bg-primary hover:bg-primary-hover disabled:opacity-60 text-white rounded-control text-xs font-medium shadow-xs cursor-pointer inline-flex items-center gap-1.5 transition-opacity"
           >
-            Save Photo
+            {isSaving ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <span>Saving...</span>
+              </>
+            ) : (
+              <span>Save Photo</span>
+            )}
           </button>
         </div>
       </div>

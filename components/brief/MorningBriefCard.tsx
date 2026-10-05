@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Sunrise, RefreshCw, AlertCircle, ChevronDown, ChevronUp, Bell, CheckCircle2 } from "lucide-react";
 import { MorningBriefData } from "@/lib/services/brief";
 
@@ -13,6 +13,10 @@ export function MorningBriefCard({ initialData, onRefresh }: MorningBriefCardPro
   const [data, setData] = useState(initialData);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    setData(initialData);
+  }, [initialData]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);

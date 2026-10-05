@@ -137,7 +137,8 @@ export async function createTeam(actor: UserContext, input: z.infer<typeof Creat
     if (data.leadId) {
       membersToCreate.push({ teamId: team.id, userId: data.leadId, isLead: true });
     }
-    for (const userId of data.memberUserIds) {
+    const uniqueMemberIds = Array.from(new Set(data.memberUserIds));
+    for (const userId of uniqueMemberIds) {
       if (userId !== data.leadId) {
         membersToCreate.push({ teamId: team.id, userId, isLead: false });
       }
@@ -187,3 +188,153 @@ export async function createTeam(actor: UserContext, input: z.infer<typeof Creat
     return team;
   });
 }
+
+/**
+ * Update Team Settings (name, description)
+ */
+export async function updateTeamSettings(
+  actor: UserContext,
+  teamId: string,
+  data: { name: string; description?: string }
+) {
+  if (!can(actor, "create_edit_teams")) {
+    throw new Error("Unauthorized to edit team settings");
+  }
+
+  const team = await db.team.update({
+    where: { id: teamId },
+    data: {
+      name: data.name,
+      description: data.description,
+    },
+  });
+
+  await logAudit(db, {
+    actorId: actor.id,
+    action: "UPDATE_TEAM",
+    entity: "Team",
+    entityId: teamId,
+    after: { name: team.name },
+  });
+
+  return team;
+}
+
+/**
+ * Add Member to Team & Team Chat Channel
+ */
+export async function addTeamMember(
+  actor: UserContext,
+  teamId: string,
+  userId: string,
+  roleTitle: string = "Member"
+) {
+  if (!can(actor, "create_edit_teams")) {
+    throw new Error("Unauthorized to add team members");
+  }
+
+  return await db.$transaction(async (tx) => {
+    const isLead = roleTitle.toLowerCase() === "lead";
+    const member = await tx.teamMember.upsert({
+      where: { teamId_userId: { teamId, userId } },
+      create: {
+        teamId,
+        userId,
+        isLead,
+      },
+      update: {
+        isLead,
+      },
+      include: {
+        user: { select: { id: true, name: true, role: true, email: true } },
+      },
+    });
+
+    // Also add to team channel
+    const channel = await tx.channel.findFirst({
+      where: { teamId, kind: ChannelKind.TEAM },
+    });
+    if (channel) {
+      await tx.channelMember.upsert({
+        where: { channelId_userId: { channelId: channel.id, userId } },
+        create: { channelId: channel.id, userId },
+        update: {},
+      });
+    }
+
+    await logAudit(tx, {
+      actorId: actor.id,
+      action: "ADD_TEAM_MEMBER",
+      entity: "TeamMember",
+      entityId: member.id,
+      after: { teamId, userId, roleTitle },
+    });
+
+    return member;
+  });
+}
+
+/**
+ * Remove Member from Team & Team Chat Channel
+ */
+export async function removeTeamMember(
+  actor: UserContext,
+  teamId: string,
+  userId: string
+) {
+  if (!can(actor, "create_edit_teams")) {
+    throw new Error("Unauthorized to remove team members");
+  }
+
+  return await db.$transaction(async (tx) => {
+    await tx.teamMember.deleteMany({
+      where: { teamId, userId },
+    });
+
+    const channel = await tx.channel.findFirst({
+      where: { teamId, kind: ChannelKind.TEAM },
+    });
+    if (channel) {
+      await tx.channelMember.deleteMany({
+        where: { channelId: channel.id, userId },
+      });
+    }
+
+    await logAudit(tx, {
+      actorId: actor.id,
+      action: "REMOVE_TEAM_MEMBER",
+      entity: "TeamMember",
+      entityId: `${teamId}_${userId}`,
+    });
+
+    return { success: true };
+  });
+}
+
+/**
+ * F-ORG-01: Toggle Campus Support Mode (ONSITE <-> REMOTE)
+ */
+export async function toggleCampusSupportMode(actor: UserContext, campusId: string) {
+  if (!can(actor, "manage_campuses")) {
+    throw new Error("Unauthorized: Only Admins can manage campuses");
+  }
+
+  const campus = await db.campus.findUniqueOrThrow({ where: { id: campusId } });
+  const nextMode = campus.mode === SupportMode.ONSITE ? SupportMode.REMOTE : SupportMode.ONSITE;
+
+  const updated = await db.campus.update({
+    where: { id: campusId },
+    data: { mode: nextMode },
+  });
+
+  await logAudit(db, {
+    actorId: actor.id,
+    action: "UPDATE_CAMPUS_MODE",
+    entity: "Campus",
+    entityId: campusId,
+    after: { mode: nextMode },
+  });
+
+  return updated;
+}
+

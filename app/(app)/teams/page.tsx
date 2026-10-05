@@ -1,189 +1,256 @@
 "use client";
 
-import { useState } from "react";
-import { Users, Plus, ShieldAlert, CheckCircle2, X } from "lucide-react";
-
-export interface TeamCardData {
-  id: string;
-  name: string;
-  slug: string;
-  type: string;
-  campus: string;
-  leadName: string;
-  memberCount: number;
-  openTasks: number;
-  status: string;
-}
-
-const INITIAL_TEAMS: TeamCardData[] = [
-  {
-    id: "tm-1",
-    name: "SMRU Campus IT",
-    slug: "smru-campus-it",
-    type: "Campus Team",
-    campus: "SMRU Main Campus",
-    leadName: "Hari (Coordinator)",
-    memberCount: 5,
-    openTasks: 4,
-    status: "On-site",
-  },
-  {
-    id: "tm-2",
-    name: "Developers",
-    slug: "developers",
-    type: "Dev Team",
-    campus: "Central IT",
-    leadName: "Sri (IT Manager)",
-    memberCount: 3,
-    openTasks: 2,
-    status: "Core",
-  },
-  {
-    id: "tm-3",
-    name: "UOS Rollout",
-    slug: "uos-rollout",
-    type: "Implementation",
-    campus: "Multi-Campus",
-    leadName: "Hari",
-    memberCount: 4,
-    openTasks: 3,
-    status: "In Progress",
-  },
-  {
-    id: "tm-4",
-    name: "Remote Support",
-    slug: "remote-support",
-    type: "Support",
-    campus: "Remote",
-    leadName: "Hari",
-    memberCount: 2,
-    openTasks: 1,
-    status: "Remote",
-  },
-  {
-    id: "tm-5",
-    name: "Interns · Web Batch Sep '26",
-    slug: "interns-sep-26",
-    type: "Interns",
-    campus: "SMRU",
-    leadName: "Hari",
-    memberCount: 3,
-    openTasks: 5,
-    status: "Batch Sep",
-  },
-];
+import { useState, useEffect } from "react";
+import { toast } from "sonner";
+import Link from "next/link";
+import {
+  Users,
+  Plus,
+  CheckCircle2,
+  X,
+  MessageSquare,
+  SlidersHorizontal,
+  MapPin,
+  ExternalLink,
+} from "lucide-react";
+import {
+  ManageTeamModal,
+  TeamCardData,
+  TeamMember,
+} from "@/components/teams/ManageTeamModal";
+import { getTeamsAction, createTeamAction } from "./actions";
 
 export default function TeamsPage() {
-  const [teams, setTeams] = useState<TeamCardData[]>(INITIAL_TEAMS);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [teams, setTeams] = useState<TeamCardData[]>([]);
+  const [selectedTeam, setSelectedTeam] = useState<TeamCardData | null>(null);
+  const [isManageModalOpen, setIsManageModalOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const loadTeams = () => {
+    getTeamsAction().then((res) => {
+      if (res.success && res.data) {
+        setTeams(res.data as any);
+      }
+      setIsLoading(false);
+    });
+  };
+
+  useEffect(() => {
+    loadTeams();
+  }, []);
+
+  // New Team form
   const [newTeamName, setNewTeamName] = useState("");
   const [newTeamType, setNewTeamType] = useState("Campus Team");
   const [newLead, setNewLead] = useState("Hari");
-  const [toast, setToast] = useState<string | null>(null);
-
-  const showToast = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(null), 3000);
+  const [newCampus, setNewCampus] = useState("SMRU Main Campus");
+  const [newDescription, setNewDescription] = useState("");
+  const handleOpenManageModal = (team: TeamCardData) => {
+    setSelectedTeam(team);
+    setIsManageModalOpen(true);
   };
 
-  const handleCreateTeam = (e: React.FormEvent) => {
+  const [isCreating, setIsCreating] = useState(false);
+
+  const handleUpdateTeam = (updated: TeamCardData) => {
+    setTeams((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+    setSelectedTeam(updated);
+    toast.success(`Team "${updated.name}" updated successfully!`);
+  };
+
+  const handleCreateTeam = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTeamName.trim()) return;
+    if (!newTeamName.trim() || isCreating) return;
 
-    const slug = newTeamName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-    const newTeam: TeamCardData = {
-      id: `tm-${Date.now()}`,
+    setIsCreating(true);
+    const res = await createTeamAction({
       name: newTeamName.trim(),
-      slug,
       type: newTeamType,
-      campus: "SMRU",
+      campus: newCampus,
       leadName: newLead,
-      memberCount: 1,
-      openTasks: 0,
-      status: "Active",
-    };
+      description: newDescription,
+    });
+    setIsCreating(false);
 
-    setTeams([...teams, newTeam]);
-    setIsModalOpen(false);
-    setNewTeamName("");
-    showToast(`Team "${newTeam.name}" created! Auto-provisioned #${slug} and Docs folder.`);
+    if (res.success) {
+      setIsCreateModalOpen(false);
+      setNewTeamName("");
+      setNewDescription("");
+      toast.success(`Team "${newTeamName.trim()}" created! Auto-provisioned channel and Docs space.`);
+      loadTeams();
+    } else {
+      toast.error(res.error || "Failed to create team");
+    }
   };
 
   return (
     <div className="space-y-6">
-      {toast && (
-        <div className="fixed bottom-6 right-6 z-50 bg-ink text-surface px-4 py-2.5 rounded-control text-xs font-medium shadow-panel border border-line flex items-center gap-2 animate-in fade-in">
-          <CheckCircle2 className="h-4 w-4 text-primary" />
-          <span>{toast}</span>
-        </div>
-      )}
+      
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-ink tracking-tight">Teams & Campuses</h1>
+          <h1 className="text-xl font-bold text-ink tracking-tight">Teams &amp; Campuses</h1>
           <p className="text-xs text-mutedText mt-0.5 font-mono">
-            Track A (Foundation): Auto-Provisioned Channels, Docs & Member Rosters
+            Track A (Foundation): Auto-Provisioned Channels, Docs &amp; Member Rosters
           </p>
         </div>
         <button
           type="button"
-          onClick={() => setIsModalOpen(true)}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary hover:bg-primary-hover text-white rounded-control text-xs font-semibold shadow-2xs self-start"
+          onClick={() => setIsCreateModalOpen(true)}
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-primary hover:bg-primary-hover text-white rounded-control text-xs font-semibold shadow-xs self-start cursor-pointer transition-colors"
         >
-          <Plus className="h-3.5 w-3.5" />
+          <Plus className="h-4 w-4" />
           <span>Create Team</span>
         </button>
       </div>
 
       {/* Teams Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {teams.map((team) => (
           <div
             key={team.id}
-            className="bg-surface rounded-panel border border-line p-5 shadow-xs flex flex-col justify-between hover:border-primary/40 transition-colors"
+            className="bg-surface rounded-panel border border-line p-5 shadow-xs flex flex-col justify-between hover:border-primary/40 hover:shadow-sm transition-all"
           >
             <div>
-              <div className="flex items-center justify-between">
+              {/* Card Badge Header */}
+              <div className="flex items-center justify-between gap-2">
                 <span className="px-2 py-0.5 bg-surface-alt border border-line rounded text-[10px] font-mono uppercase text-mutedText font-semibold">
                   {team.type}
                 </span>
-                <span className="text-[11px] font-mono text-primary font-bold">{team.status}</span>
+                <span className="inline-flex items-center gap-1 text-[11px] font-mono text-primary font-bold">
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                  <span>{team.status}</span>
+                </span>
               </div>
+
+              {/* Title & Description */}
               <h2 className="text-base font-bold text-ink mt-3">{team.name}</h2>
-              <p className="text-xs text-mutedText mt-1">Lead: {team.leadName}</p>
-              <div className="mt-2 text-[10px] font-mono text-mutedText">
-                Campus: {team.campus}
+              <p className="text-xs text-mutedText mt-1 line-clamp-2 leading-relaxed">
+                {team.description}
+              </p>
+
+              {/* Lead & Campus meta */}
+              <div className="mt-3.5 pt-3 border-t border-line/60 space-y-1.5 text-xs text-mutedText">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-[11px]">Lead:</span>
+                  <span className="font-semibold text-ink">{team.leadName}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-[11px] flex items-center gap-1">
+                    <MapPin className="h-3 w-3 text-mutedText" />
+                    <span>Campus:</span>
+                  </span>
+                  <span className="text-ink">{team.campus}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-[11px] flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                    <span>Present Today:</span>
+                  </span>
+                  <span className="font-mono font-semibold text-emerald-600 text-[11px]">
+                    {
+                      team.members.filter(
+                        (m) =>
+                          m.attendanceStatus === "PRESENT" ||
+                          m.attendanceStatus === "LATE" ||
+                          m.isOnline
+                      ).length
+                    }{" "}
+                    / {team.members.length} Present
+                  </span>
+                </div>
               </div>
             </div>
 
-            <div className="mt-6 pt-4 border-t border-line flex items-center justify-between text-xs text-mutedText font-mono">
-              <span className="flex items-center gap-1">
-                <Users className="h-3.5 w-3.5 text-primary" />
-                <span>{team.memberCount} members</span>
-              </span>
-              <span>{team.openTasks} open tasks</span>
+            {/* Bottom Actions Bar: Connect to Chat + Manage Team */}
+            <div className="mt-5 pt-3 border-t border-line flex flex-col gap-2.5">
+              <div className="flex items-center justify-between text-xs text-mutedText font-mono">
+                <span className="flex items-center gap-1.5 flex-wrap">
+                  <Users className="h-3.5 w-3.5 text-primary" />
+                  <span className="font-semibold text-ink">{team.members.length} members</span>
+                  <span className="text-line">•</span>
+                  <span
+                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 font-bold text-[10px]"
+                    title={`${
+                      team.members.filter(
+                        (m) =>
+                          m.attendanceStatus === "PRESENT" ||
+                          m.attendanceStatus === "LATE" ||
+                          m.isOnline
+                      ).length
+                    } members checked-in / present today`}
+                  >
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <span>
+                      {
+                        team.members.filter(
+                          (m) =>
+                            m.attendanceStatus === "PRESENT" ||
+                            m.attendanceStatus === "LATE" ||
+                            m.isOnline
+                        ).length
+                      }{" "}
+                      present
+                    </span>
+                  </span>
+                </span>
+                <span>{team.openTasks} open tasks</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                {/* 1. Connect to Chat Button */}
+                <Link
+                  href={`/chat?channel=${team.slug}`}
+                  prefetch={true}
+                  className="inline-flex items-center justify-center gap-1.5 py-2 px-2.5 bg-surface-alt hover:bg-ground text-primary border border-line rounded-control text-xs font-semibold transition-colors shadow-2xs"
+                  title={`Open #${team.slug} channel in Chat`}
+                >
+                  <MessageSquare className="h-3.5 w-3.5" />
+                  <span className="truncate">#{team.slug}</span>
+                </Link>
+
+                {/* 2. Manage Team Button */}
+                <button
+                  type="button"
+                  onClick={() => handleOpenManageModal(team)}
+                  className="inline-flex items-center justify-center gap-1.5 py-2 px-2.5 bg-primary hover:bg-primary-hover text-white rounded-control text-xs font-semibold transition-colors shadow-xs cursor-pointer"
+                  title="Manage team members, roles & settings"
+                >
+                  <SlidersHorizontal className="h-3.5 w-3.5" />
+                  <span>Manage</span>
+                </button>
+              </div>
             </div>
           </div>
         ))}
       </div>
 
+      {/* Comprehensive Manage Team Modal */}
+      <ManageTeamModal
+        isOpen={isManageModalOpen}
+        onClose={() => setIsManageModalOpen(false)}
+        team={selectedTeam}
+        onUpdateTeam={handleUpdateTeam}
+      />
+
       {/* Create Team Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-surface rounded-panel border border-line w-full max-w-md shadow-panel p-4 space-y-3 animate-in fade-in">
+      {isCreateModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-surface rounded-panel border border-line w-full max-w-md shadow-panel p-5 space-y-4 animate-in fade-in">
             <div className="flex items-center justify-between pb-2 border-b border-line">
               <h3 className="text-sm font-bold text-ink">Create New Team</h3>
               <button
                 type="button"
-                onClick={() => setIsModalOpen(false)}
-                className="p-1 rounded text-mutedText hover:text-ink"
+                onClick={() => setIsCreateModalOpen(false)}
+                className="p-1 rounded text-mutedText hover:text-ink cursor-pointer"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateTeam} className="space-y-3 text-xs">
+            <form onSubmit={handleCreateTeam} className="space-y-3.5 text-xs">
               <div>
                 <label className="block font-semibold text-ink mb-1">Team Name *</label>
                 <input
@@ -192,6 +259,17 @@ export default function TeamsPage() {
                   placeholder="e.g. Wi-Fi Infrastructure Team"
                   value={newTeamName}
                   onChange={(e) => setNewTeamName(e.target.value)}
+                  className="w-full p-2 bg-ground border border-line rounded-control text-ink focus:outline-none focus:border-primary"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-ink mb-1">Description</label>
+                <textarea
+                  rows={2}
+                  placeholder="Mission and operational responsibilities..."
+                  value={newDescription}
+                  onChange={(e) => setNewDescription(e.target.value)}
                   className="w-full p-2 bg-ground border border-line rounded-control text-ink focus:outline-none focus:border-primary"
                 />
               </div>
@@ -218,30 +296,48 @@ export default function TeamsPage() {
                     onChange={(e) => setNewLead(e.target.value)}
                     className="w-full p-2 bg-ground border border-line rounded-control text-ink focus:outline-none focus:border-primary text-xs"
                   >
-                    <option value="Sri (IT Manager)">Sri</option>
                     <option value="Hari (Coordinator)">Hari</option>
+                    <option value="Sri (IT Manager)">Sri</option>
                     <option value="Dev Web">Dev Web</option>
                   </select>
                 </div>
               </div>
 
+              <div>
+                <label className="block font-semibold text-ink mb-1">Campus Location</label>
+                <input
+                  type="text"
+                  value={newCampus}
+                  onChange={(e) => setNewCampus(e.target.value)}
+                  className="w-full p-2 bg-ground border border-line rounded-control text-ink focus:outline-none focus:border-primary"
+                />
+              </div>
+
               <div className="p-2.5 rounded-control bg-surface-alt border border-line text-[11px] text-mutedText">
-                Auto-provisions: Chat channel (<span className="font-mono text-primary">#team-slug</span>) and a team Docs space folder.
+                Auto-provisions: Chat channel (<span className="font-mono text-primary">#team-slug</span>) and a Docs space.
               </div>
 
               <div className="pt-2 flex justify-end gap-2 border-t border-line">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-3 py-1.5 text-mutedText hover:text-ink"
+                  onClick={() => setIsCreateModalOpen(false)}
+                  className="px-3 py-1.5 text-mutedText hover:text-ink cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 bg-primary text-white font-semibold rounded-control"
+                  disabled={isCreating}
+                  className="px-4 py-1.5 bg-primary hover:bg-primary-hover disabled:opacity-60 text-white font-semibold rounded-control cursor-pointer shadow-xs inline-flex items-center gap-1.5 transition-opacity"
                 >
-                  Create & Provision
+                  {isCreating ? (
+                    <>
+                      <span className="h-3.5 w-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span>Provisioning...</span>
+                    </>
+                  ) : (
+                    <span>Create &amp; Provision</span>
+                  )}
                 </button>
               </div>
             </form>

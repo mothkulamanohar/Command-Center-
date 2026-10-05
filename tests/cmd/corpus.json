@@ -645,7 +645,7 @@
   },
   {
     "input": "todo renew smru.in SSL",
-    "expectedIntent": "ADD_TASK"
+    "expectedIntent": "ADD_TODO"
   },
   {
     "input": "remind me to call CTPL tomorrow 11am",
@@ -661,7 +661,7 @@
   },
   {
     "input": "todo review intern JPA appraisals",
-    "expectedIntent": "ADD_TASK"
+    "expectedIntent": "ADD_TODO"
   },
   {
     "input": "remind me to inspect server rack 2",
@@ -677,7 +677,7 @@
   },
   {
     "input": "todo verify SSL certificate on admissions.smru.edu.in",
-    "expectedIntent": "ADD_TASK"
+    "expectedIntent": "ADD_TODO"
   },
   {
     "input": "remind me to order optical transceiver modules",
@@ -686,5 +686,64 @@
   {
     "input": "VC wants university website audit by next week",
     "expectedIntent": "ADD_TASK"
-  }
+  },
+  { "input": "todo call vendor tomorrow 3pm", "expectedIntent": "ADD_TODO" },
+  { "input": "to-do buy HDMI cables", "expectedIntent": "ADD_TODO" },
+  { "input": "plan SEO reading 4-5pm", "expectedIntent": "ADD_TODO" },
+  { "input": "todo: pay electricity bill every month on 5th", "expectedIntent": "ADD_TODO" },
+  { "input": "repu 3 ki vendor ki call cheyyali todo", "expectedIntent": "ADD_TODO" },
+  { "input": "todo order new keyboard for lab 1", "expectedIntent": "ADD_TODO" },
+  { "input": "todo prepare weekly meeting agenda", "expectedIntent": "ADD_TODO" },
+  { "input": "plan review react docs tomorrow 10am", "expectedIntent": "ADD_TODO" },
+  { "input": "to-do check network switch firmware", "expectedIntent": "ADD_TODO" },
+  { "input": "vendor ki call cheyyali todo", "expectedIntent": "ADD_TODO" },
+  { "input": "tick buy cables", "expectedIntent": "DONE_TODO" },
+  { "input": "done buy HDMI cables", "expectedIntent": "DONE_TODO" },
+  { "input": "tick call vendor", "expectedIntent": "DONE_TODO" },
+  { "input": "fee page will take 3h", "expectedIntent": "SET_ESTIMATE" },
+  { "input": "estimate T-1042 2 days", "expectedIntent": "SET_ESTIMATE" },
+  { "input": "estimate fix admission form 45m", "expectedIntent": "SET_ESTIMATE" },
+  { "input": "fee page ki 2 gantalu padutundi", "expectedIntent": "SET_ESTIMATE" },
+  { "input": "estimate T-1043 1.5h", "expectedIntent": "SET_ESTIMATE" },
+  { "input": "estimate portal redesign 3d", "expectedIntent": "SET_ESTIMATE" },
+  { "input": "admission form takes 2h", "expectedIntent": "SET_ESTIMATE" },
+  { "input": "start timer on fee page", "expectedIntent": "START_TIMER" },
+  { "input": "start T-1042", "expectedIntent": "START_TIMER" },
+  { "input": "start timer on UOS rollout", "expectedIntent": "START_TIMER" },
+  { "input": "start timer", "expectedIntent": "START_TIMER" },
+  { "input": "stop timer", "expectedIntent": "STOP_TIMER" },
+  { "input": "pause", "expectedIntent": "STOP_TIMER" },
+  { "input": "pause timer", "expectedIntent": "STOP_TIMER" },
+  { "input": "log 2h on T-1042", "expectedIntent": "LOG_TIME" },
+  { "input": "spent 45m on SEO audit yesterday", "expectedIntent": "LOG_TIME" },
+  { "input": "log 1h on admission form", "expectedIntent": "LOG_TIME" },
+  { "input": "spent 3h on lab setup", "expectedIntent": "LOG_TIME" },
+  { "input": "log 30m on bug fix", "expectedIntent": "LOG_TIME" },
+  { "input": "check in", "expectedIntent": "CHECK_IN" },
+  { "input": "checkin", "expectedIntent": "CHECK_IN" },
+  { "input": "in from campus Chebrol", "expectedIntent": "CHECK_IN" },
+  { "input": "working remote today", "expectedIntent": "CHECK_IN" },
+  { "input": "nenu office ki vachanu", "expectedIntent": "CHECK_IN" },
+  { "input": "check in from Guntur", "expectedIntent": "CHECK_IN" },
+  { "input": "check out", "expectedIntent": "CHECK_OUT" },
+  { "input": "checkout", "expectedIntent": "CHECK_OUT" },
+  { "input": "leaving", "expectedIntent": "CHECK_OUT" },
+  { "input": "leave tomorrow sick", "expectedIntent": "APPLY_LEAVE" },
+  { "input": "on leave 3 to 5 Oct casual", "expectedIntent": "APPLY_LEAVE" },
+  { "input": "apply leave Friday personal work", "expectedIntent": "APPLY_LEAVE" },
+  { "input": "who is in today?", "expectedIntent": "QUERY_ATTENDANCE" },
+  { "input": "who is in today", "expectedIntent": "QUERY_ATTENDANCE" },
+  { "input": "my attendance this month", "expectedIntent": "QUERY_ATTENDANCE" },
+  { "input": "attendance for September", "expectedIntent": "QUERY_ATTENDANCE" },
+  { "input": "Hari's attendance September", "expectedIntent": "QUERY_ATTENDANCE" },
+  { "input": "feedback T-1042 4 stars good work", "expectedIntent": "GIVE_FEEDBACK" },
+  { "input": "rate Hari's fee page 5", "expectedIntent": "GIVE_FEEDBACK" },
+  { "input": "T-1042 needs rework: test on mobile", "expectedIntent": "GIVE_FEEDBACK" },
+  { "input": "T-1042 ki 4 stars ivvu", "expectedIntent": "GIVE_FEEDBACK" },
+  { "input": "feedback T-1050 5 stars excellent code quality", "expectedIntent": "GIVE_FEEDBACK" },
+  { "input": "rate T-1045 3", "expectedIntent": "GIVE_FEEDBACK" },
+  { "input": "issue completion certificate to Intern Web A", "expectedIntent": "ISSUE_CERTIFICATE" },
+  { "input": "issue certificate to Intern Web B", "expectedIntent": "ISSUE_CERTIFICATE" },
+  { "input": "certificates for Interns · Web batch Sep '26", "expectedIntent": "ISSUE_CERTIFICATE" },
+  { "input": "certificate for Dev Web", "expectedIntent": "ISSUE_CERTIFICATE" }
 ]

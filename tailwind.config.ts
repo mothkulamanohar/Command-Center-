@@ -11,38 +11,38 @@ const config: Config = {
     extend: {
       colors: {
         ink: {
-          DEFAULT: "#17191E",
-          sidebar: "#17191E",
+          DEFAULT: "#111827",
+          sidebar: "#1B365D",
         },
         ground: {
-          DEFAULT: "#F4F2EC",
+          DEFAULT: "#F7F6F2",
         },
         surface: {
           DEFAULT: "#FFFFFF",
-          alt: "#FBFAF7",
+          alt: "#F9FAFB",
         },
         line: {
-          DEFAULT: "#E3E0D8",
+          DEFAULT: "#E2E8F0",
         },
         mutedText: {
-          DEFAULT: "#5B5F68",
+          DEFAULT: "#64748B",
         },
         primary: {
-          DEFAULT: "#0E6E66",
-          hover: "#0A4F49",
-          accent: "#3FB8AC",
+          DEFAULT: "#1E56D8",
+          hover: "#174CBF",
+          accent: "#3B82F6",
         },
         chasing: {
-          DEFAULT: "#9A4A08",
-          tint: "#F6E4D0",
+          DEFAULT: "#C25E00",
+          tint: "#FEF3C7",
         },
         shared: {
-          DEFAULT: "#5B3FA6",
-          tint: "#E7E1F4",
+          DEFAULT: "#2563EB",
+          tint: "#EFF6FF",
         },
         danger: {
-          DEFAULT: "#B42318",
-          tint: "#FBE3E0",
+          DEFAULT: "#DC2626",
+          tint: "#FEE2E2",
         },
       },
       borderRadius: {
@@ -54,9 +54,14 @@ const config: Config = {
         sans: ["var(--font-ibm-plex-sans)", "IBM Plex Sans", "sans-serif"],
         mono: ["var(--font-ibm-plex-mono)", "IBM Plex Mono", "monospace"],
       },
+      boxShadow: {
+        "2xs": "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
+      },
       spacing: {
         "panel-p": "18px",
         "page-p": "28px",
+        "0.2": "1px",
+        "0.1": "0.5px",
       },
       minHeight: {
         touch: "44px",
