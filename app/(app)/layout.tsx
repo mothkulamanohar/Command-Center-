@@ -19,25 +19,38 @@ export default async function AppLayout({
   const currentRole = user?.role || RoleKey.ADMIN;
 
   const today = startOfDay(new Date());
-  const attendanceRecord = user ? await prisma.attendanceRecord.findUnique({
-    where: { userId_date: { userId: user.id, date: today } }
-  }) : null;
+  let attendanceRecord = null;
+  let activeTimeLog = null;
+  let inboxCount = 0;
+  let trashCount = 0;
+  let feedbackCount = 0;
+  let todoCount = 0;
 
-  const activeTimeLog = user
-    ? await prisma.timeLog.findFirst({
-        where: { userId: user.id, endedAt: null },
-        include: { task: { select: { number: true, title: true } } },
-      })
-    : null;
-
-  const [inboxCount, trashCount, feedbackCount, todoCount] = user
-    ? await Promise.all([
+  if (user) {
+    try {
+      const [att, tl, ic, tc, fc, tdc] = await Promise.all([
+        prisma.attendanceRecord.findUnique({
+          where: { userId_date: { userId: user.id, date: today } },
+        }),
+        prisma.timeLog.findFirst({
+          where: { userId: user.id, endedAt: null },
+          include: { task: { select: { number: true, title: true } } },
+        }),
         prisma.request.count({ where: { toUserId: user.id, state: "NEW" } }),
         prisma.task.count({ where: { deletedAt: { not: null } } }),
         prisma.task.count({ where: { status: "DONE", feedback: { none: {} }, deletedAt: null } }),
         prisma.todoItem.count({ where: { userId: user.id, done: false, deletedAt: null } }),
-      ])
-    : [0, 0, 0, 0];
+      ]);
+      attendanceRecord = att;
+      activeTimeLog = tl;
+      inboxCount = ic;
+      trashCount = tc;
+      feedbackCount = fc;
+      todoCount = tdc;
+    } catch (err) {
+      console.warn("Database connection issue in AppLayout (PostgreSQL might be offline):", (err as Error)?.message || err);
+    }
+  }
 
   const runningTimer = activeTimeLog
     ? {

@@ -11,9 +11,14 @@ export default async function MySpacePage() {
 
   const today = startOfDay(new Date());
 
-  const record = await prisma.attendanceRecord.findUnique({
-    where: { userId_date: { userId: user.id, date: today } }
-  });
+  let record = null;
+  try {
+    record = await prisma.attendanceRecord.findUnique({
+      where: { userId_date: { userId: user.id, date: today } },
+    });
+  } catch (err) {
+    console.warn("Database offline in MySpacePage:", (err as Error)?.message || err);
+  }
 
   return (
     <Suspense fallback={<div>Loading My Space...</div>}>
