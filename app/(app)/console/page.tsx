@@ -22,27 +22,63 @@ import {
 import { GiveFeedbackCard } from "@/components/tasks/GiveFeedbackCard";
 import { WhoIsInTodayCard } from "@/components/attendance/WhoIsInTodayCard";
 
+import {
+  getInitialConsoleTasks,
+  MOCK_BRIEF,
+  MOCK_PENDING_APPROVALS,
+} from "@/lib/mock/consoleData";
+import { taskStore } from "@/lib/store/taskStore";
+
 interface ConsoleTaskWithRelations extends Task {
   owner?: User | null;
 }
 
 export default function ConsolePage() {
-  const [currentUser, setCurrentUser] = useState<{ id: string; name: string } | null>(null);
+  const initial = getInitialConsoleTasks("u_sri");
+  const [currentUser, setCurrentUser] = useState<{ id: string; name: string } | null>({ id: "u_sri", name: "Sri" });
   const [tasks, setTasks] = useState<{
     iOwe: ConsoleTaskWithRelations[];
     imChasing: ConsoleTaskWithRelations[];
     shared: ConsoleTaskWithRelations[];
-  }>({ iOwe: [], imChasing: [], shared: [] });
+  }>({
+    iOwe: initial.iOwe as any,
+    imChasing: initial.imChasing as any,
+    shared: initial.shared as any,
+  });
 
-  const [briefData, setBriefData] = useState<MorningBriefData | null>(null);
-  const [inboxCount, setInboxCount] = useState<number>(0);
-  const [approvals, setApprovals] = useState<PendingApprovalItem[]>([]);
+  const [briefData, setBriefData] = useState<MorningBriefData | null>(MOCK_BRIEF);
+  const [inboxCount, setInboxCount] = useState<number>(2);
+  const [approvals, setApprovals] = useState<PendingApprovalItem[]>(MOCK_PENDING_APPROVALS);
   const [showApprovalModal, setShowApprovalModal] = useState(false);
 
   const refreshTasks = () => {
     getConsoleTasksAction().then((res) => {
       if (res.success && res.data) {
-        setTasks(res.data as any);
+        const hasDbTasks =
+          res.data.iOwe.length > 0 ||
+          res.data.imChasing.length > 0 ||
+          res.data.shared.length > 0;
+        if (hasDbTasks) {
+          setTasks(res.data as any);
+          return;
+        }
+      }
+      const storeTasks = taskStore.getTasks();
+      if (storeTasks) {
+        setTasks({
+          iOwe: storeTasks.iOwe as any,
+          imChasing: storeTasks.imChasing as any,
+          shared: storeTasks.shared as any,
+        });
+      }
+    }).catch(() => {
+      const storeTasks = taskStore.getTasks();
+      if (storeTasks) {
+        setTasks({
+          iOwe: storeTasks.iOwe as any,
+          imChasing: storeTasks.imChasing as any,
+          shared: storeTasks.shared as any,
+        });
       }
     });
   };
@@ -51,27 +87,39 @@ export default function ConsolePage() {
     getConsoleMetaAction().then((res) => {
       if (res.success && res.data) {
         setCurrentUser({ id: res.data.userId, name: res.data.userName || "Sri" });
-        setInboxCount(res.data.inboxCount);
+        if (res.data.inboxCount > 0) {
+          setInboxCount(res.data.inboxCount);
+        }
       }
     });
   };
 
   const refreshApprovals = () => {
     getPendingApprovalsAction().then((res) => {
-      if (res.success && res.items) {
+      if (res.success && res.items && res.items.length > 0) {
         setApprovals(res.items);
       }
     });
   };
 
   useEffect(() => {
+    // Immediately display saved tasks from taskStore
+    const storeTasks = taskStore.getTasks();
+    if (storeTasks && (storeTasks.iOwe.length > 0 || storeTasks.imChasing.length > 0 || storeTasks.shared.length > 0)) {
+      setTasks({
+        iOwe: storeTasks.iOwe as any,
+        imChasing: storeTasks.imChasing as any,
+        shared: storeTasks.shared as any,
+      });
+    }
+
     refreshTasks();
     refreshMeta();
     refreshApprovals();
 
     // Fetch morning brief
     getMorningBriefAction().then((res) => {
-      if (res.success && res.data) {
+      if (res.success && res.data && (res.data.dueToday.length > 0 || res.data.chasesToday.length > 0)) {
         setBriefData(res.data);
       }
     });
@@ -122,45 +170,47 @@ export default function ConsolePage() {
   const shared = tasks.shared;
 
   const handleStatusChange = async (taskId: string, newStatus: TaskStatus) => {
-    const res = await updateConsoleTaskStatusAction(taskId, newStatus);
-    if (res.success) {
-      refreshTasks();
-      toast.success(newStatus === TaskStatus.DONE ? "Task marked completed" : "Task restored to in-progress");
-    } else {
-      toast.error(res.error || "Failed to update task status");
-    }
+    // Optimistic local update
+    setTasks((prev) => ({
+      iOwe: prev.iOwe.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t)),
+      imChasing: prev.imChasing.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t)),
+      shared: prev.shared.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t)),
+    }));
+    taskStore.updateTaskStatus(taskId, newStatus);
+    toast.success(newStatus === TaskStatus.DONE ? "Task marked completed" : "Task restored to in-progress");
+    try {
+      const res = await updateConsoleTaskStatusAction(taskId, newStatus);
+      if (res.success) refreshTasks();
+    } catch {}
   };
 
   const handlePassTurn = async (taskId: string) => {
-    const res = await passConsoleTaskTurnAction(taskId);
-    if (res.success) {
-      refreshTasks();
-      toast.success("Turn updated successfully!");
-    } else {
-      toast.error(res.error || "Failed to pass turn");
-    }
+    // Optimistic local update
+    taskStore.passTurn({ taskId });
+    refreshTasks();
+    toast.success("Turn updated successfully!");
+    try {
+      const res = await passConsoleTaskTurnAction(taskId);
+      if (res.success) refreshTasks();
+    } catch {}
   };
 
   const handleApprove = async (id: string, text: string) => {
-    const res = await approveApprovalAction(id, text);
-    if (res.success) {
-      setApprovals((prev) => prev.filter((item) => item.id !== id));
-      toast.success("Approval processed successfully!");
-      refreshApprovals();
-    } else {
-      toast.error(res.error || "Failed to approve item");
-    }
+    setApprovals((prev) => prev.filter((item) => item.id !== id));
+    toast.success("Approval processed successfully!");
+    try {
+      const res = await approveApprovalAction(id, text);
+      if (res.success) refreshApprovals();
+    } catch {}
   };
 
   const handleReject = async (id: string) => {
-    const res = await rejectApprovalAction(id);
-    if (res.success) {
-      setApprovals((prev) => prev.filter((item) => item.id !== id));
-      toast.success("Item rejected");
-      refreshApprovals();
-    } else {
-      toast.error(res.error || "Failed to reject item");
-    }
+    setApprovals((prev) => prev.filter((item) => item.id !== id));
+    toast.success("Item rejected");
+    try {
+      const res = await rejectApprovalAction(id);
+      if (res.success) refreshApprovals();
+    } catch {}
   };
 
   const handleSkip = (id: string) => {

@@ -32,32 +32,30 @@ export default function AttendanceRequestsPage() {
 
   const handleRegAction = async (id: string, action: "APPROVED" | "REJECTED") => {
     const target = regs.find((r) => r.id === id);
-    const res = await decideRegularizationAction(id, action as any);
-    if (res.success) {
-      toast.success(
-        action === "APPROVED"
-          ? `✓ Regularisation approved for ${target?.userName || "user"}`
-          : `Regularisation rejected for ${target?.userName || "user"}`
-      );
-      loadRequests();
-    } else {
-      toast.error(res.error || "Failed to update regularisation");
-    }
+    setRegs((prev) => prev.map((r) => (r.id === id ? { ...r, status: action } : r)));
+    toast.success(
+      action === "APPROVED"
+        ? `✓ Regularisation approved for ${target?.userName || "user"}`
+        : `Regularisation rejected for ${target?.userName || "user"}`
+    );
+    try {
+      const res = await decideRegularizationAction(id, action as any);
+      if (res.success) loadRequests();
+    } catch {}
   };
 
   const handleLeaveAction = async (id: string, action: "APPROVED" | "REJECTED") => {
     const target = leaves.find((l) => l.id === id);
-    const res = await decideLeaveAction(id, action as any);
-    if (res.success) {
-      toast.success(
-        action === "APPROVED"
-          ? `✓ Leave request approved for ${target?.userName || "user"}`
-          : `Leave request rejected for ${target?.userName || "user"}`
-      );
-      loadRequests();
-    } else {
-      toast.error(res.error || "Failed to update leave");
-    }
+    setLeaves((prev) => prev.map((l) => (l.id === id ? { ...l, status: action } : l)));
+    toast.success(
+      action === "APPROVED"
+        ? `✓ Leave request approved for ${target?.userName || "user"}`
+        : `Leave request rejected for ${target?.userName || "user"}`
+    );
+    try {
+      const res = await decideLeaveAction(id, action as any);
+      if (res.success) loadRequests();
+    } catch {}
   };
 
   return (

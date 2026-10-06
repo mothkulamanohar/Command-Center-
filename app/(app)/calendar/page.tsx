@@ -10,17 +10,33 @@ import { DayPanel } from "@/components/calendar/DayPanel";
 import { CalendarView, CalendarEvent } from "@/components/calendar/CalendarView";
 import { getCalendarItemsAction, createCalendarEventAction } from "./actions";
 
+import { getFestivalCalendarItems } from "@/lib/services/festivalData";
+
+const BASELINE_USER_ITEMS: CalendarItem[] = [
+  { id: "t-1042-dl", title: "[T-1042] Review monthly KPI report for VC", kind: "DEADLINE", date: "2026-10-07", time: "06:00 PM" },
+  { id: "t-1043-dl", title: "[T-1043] Approve UOS implementation rollout schedule", kind: "DEADLINE", date: "2026-10-08", time: "06:00 PM" },
+  { id: "t-1044-dl", title: "[T-1044] Fix admission form verification on smru.in", kind: "DEADLINE", date: "2026-10-09", time: "06:00 PM" },
+  { id: "t-1045-dl", title: "[T-1045] Renew smru.in SSL & DNS mapping", kind: "DEADLINE", date: "2026-10-12", time: "06:00 PM" },
+  { id: "ev-1", title: "Campus IT Weekly Operations Sync", kind: "MEETING", date: "2026-10-06", time: "10:00 AM" },
+  { id: "ev-2", title: "UOS Phase 1 Implementation Review", kind: "MEETING", date: "2026-10-08", time: "02:30 PM" },
+];
+
+const INITIAL_CALENDAR_ITEMS: CalendarItem[] = [
+  ...(getFestivalCalendarItems(2026) as CalendarItem[]),
+  ...BASELINE_USER_ITEMS,
+];
+
 export default function CalendarPage() {
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [viewMode, setViewMode] = useState<"MONTH" | "YEAR" | "LIST">("MONTH");
   const [selectedDay, setSelectedDay] = useState<Date | null>(new Date());
-  const [items, setItems] = useState<CalendarItem[]>([]);
+  const [items, setItems] = useState<CalendarItem[]>(INITIAL_CALENDAR_ITEMS);
   const currentYear = currentDate.getFullYear();
   const currentMonth = currentDate.getMonth();
 
   const loadItems = async () => {
     const res = await getCalendarItemsAction(currentYear, currentMonth);
-    if (res.success && res.data) {
+    if (res.success && res.data && res.data.length > 0) {
       setItems(res.data);
     }
   };

@@ -75,8 +75,8 @@ export function ApprovalQueueModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-surface rounded-panel border border-line w-full max-w-2xl max-h-[85vh] flex flex-col shadow-panel animate-in fade-in zoom-in-95">
+    <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4">
+      <div className="bg-surface rounded-panel border border-line w-full max-w-2xl max-h-[92vh] sm:max-h-[85vh] flex flex-col shadow-panel animate-in fade-in zoom-in-95">
         {/* Header */}
         <div className="p-4 border-b border-line flex items-center justify-between bg-surface-alt/50">
           <div className="flex items-center gap-2">
@@ -176,7 +176,7 @@ export function ApprovalQueueModal({
                 )}
 
                 {editingId !== item.id && (
-                  <div className="flex items-center justify-end gap-2 pt-1">
+                  <div className="flex items-center justify-end gap-2 pt-1 flex-wrap">
                     <button
                       type="button"
                       disabled={!!processingId}

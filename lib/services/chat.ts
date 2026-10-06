@@ -5,7 +5,8 @@ import { emitToChannel } from "@/lib/socket";
 import { saveExtractedLinks } from "@/lib/services/links";
 import { Prisma } from "@prisma/client";
 
-export const TASK_REF_REGEX = /T-(\d+)/g;
+export { TASK_REF_REGEX, extractTaskRefs, parseKudosCommand } from "@/lib/utils/stringParsing";
+import { extractTaskRefs, parseKudosCommand } from "@/lib/utils/stringParsing";
 
 export const PostMessageSchema = z.object({
   channelId: z.string(),
@@ -14,26 +15,6 @@ export const PostMessageSchema = z.object({
   kind: z.string().default("TEXT"),
   meta: z.record(z.unknown()).default({}),
 });
-
-/**
- * Extracts task references e.g. T-1042 from message text
- */
-export function extractTaskRefs(text: string): number[] {
-  const matches = [...text.matchAll(TASK_REF_REGEX)];
-  return matches.map((m) => parseInt(m[1]!, 10));
-}
-
-/**
- * Parse /kudos @person reason command per SPEC F-CHAT-14
- */
-export function parseKudosCommand(text: string): { targetName: string; reason: string } | null {
-  const match = text.match(/^\/kudos\s+@?([a-zA-Z0-9_\.\-]+)\s+(?:for\s+)?(.+)$/i);
-  if (!match || !match[1] || !match[2]) return null;
-  return {
-    targetName: match[1].trim(),
-    reason: match[2].trim(),
-  };
-}
 
 /**
  * F-CHAT-03: Post message to channel or DM

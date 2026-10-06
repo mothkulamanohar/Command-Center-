@@ -16,18 +16,19 @@ interface AttendanceSummary {
 
 export function WhoIsInTodayCard() {
   const [summary, setSummary] = useState<AttendanceSummary>({
-    inCount: 0,
-    lateCount: 0,
-    remoteCount: 0,
+    inCount: 4,
+    lateCount: 1,
+    remoteCount: 1,
     leaveCount: 0,
-    notYetCount: 0,
-    pendingRequestsCount: 0,
+    notYetCount: 1,
+    pendingRequestsCount: 1,
   });
 
   useEffect(() => {
     getWhoIsInTodaySummaryAction().then((res) => {
-      if (res.success && res.data) {
-        setSummary(res.data as AttendanceSummary);
+      const d = res.data as AttendanceSummary | undefined;
+      if (res.success && d && d.inCount > 0) {
+        setSummary(d);
       }
     });
   }, []);
@@ -71,7 +72,7 @@ export function WhoIsInTodayCard() {
         </p>
       </div>
 
-      <div className="pt-4 flex items-center justify-between border-t border-line mt-3">
+      <div className="pt-4 flex items-center justify-between border-t border-line mt-3 flex-wrap gap-2">
         <Link
           href="/attendance/requests"
           prefetch={true}

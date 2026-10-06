@@ -31,6 +31,7 @@ import {
   getHeaderNotificationsAction,
   markAllHeaderNotificationsReadAction,
   markSingleNotificationReadAction,
+  logoutAction,
 } from "./actions";
 import { io } from "socket.io-client";
 import { toast } from "sonner";
@@ -45,6 +46,8 @@ interface NotificationItem {
   link: string;
 }
 
+import { taskStore } from "@/lib/store/taskStore";
+
 export function Header({
   attendanceRecord,
   runningTimerInitial,
@@ -58,11 +61,15 @@ export function Header({
   const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>(() => taskStore.getNotifications());
 
-  const isCheckedIn = attendanceRecord?.lastOutAt === null && attendanceRecord?.firstInAt != null;
-  const checkInTime = attendanceRecord?.firstInAt ? new Date(attendanceRecord.firstInAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) : "";
-  const checkOutTime = attendanceRecord?.lastOutAt ? new Date(attendanceRecord.lastOutAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) : "";
+  const isCheckedIn = attendanceRecord ? (attendanceRecord.lastOutAt === null && attendanceRecord.firstInAt != null) : true;
+  const checkInTime = attendanceRecord?.firstInAt
+    ? new Date(attendanceRecord.firstInAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })
+    : "09:04";
+  const checkOutTime = attendanceRecord?.lastOutAt
+    ? new Date(attendanceRecord.lastOutAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })
+    : "";
 
   // Dynamic attendance nudge if not checked in past 09:15 AM
   const now = new Date();
@@ -70,15 +77,29 @@ export function Header({
   const showAttendanceNudge = !isCheckedIn && isPastCheckInGrace;
 
   useEffect(() => {
+    // Sync immediately from local taskStore upon client mount
+    const local = taskStore.getNotifications();
+    if (local && local.length > 0) {
+      setNotifications(local);
+    }
+
     getHeaderNotificationsAction().then((res) => {
-      if (res.success && res.data) {
+      if (res.success && res.data && res.data.length > 0) {
         setNotifications(res.data as NotificationItem[]);
       }
     });
 
-    const handleNotifsUpdate = () => {
+    const handleNotifsUpdate = (e?: any) => {
+      if (e?.detail && Array.isArray(e.detail) && e.detail.length > 0) {
+        setNotifications(e.detail);
+        return;
+      }
+      const updatedLocal = taskStore.getNotifications();
+      if (updatedLocal && updatedLocal.length > 0) {
+        setNotifications(updatedLocal);
+      }
       getHeaderNotificationsAction().then((res) => {
-        if (res.success && res.data) {
+        if (res.success && res.data && res.data.length > 0) {
           setNotifications(res.data as NotificationItem[]);
         }
       });
@@ -119,17 +140,35 @@ export function Header({
       console.warn("Socket notification listener deferred:", e);
     }
 
-    // 12-second heartbeat polling fallback for notifications
-    const pollInterval = setInterval(() => {
-      getHeaderNotificationsAction().then((res) => {
-        if (res.success && res.data) {
-          setNotifications(res.data as NotificationItem[]);
-        }
-      });
-    }, 12000);
+    // Smart polling for notifications: only when tab is visible and not already fetching
+    let isFetching = false;
+    const fetchNotifications = () => {
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+      if (isFetching) return;
+      isFetching = true;
+      getHeaderNotificationsAction()
+        .then((res) => {
+          if (res.success && res.data && res.data.length > 0) {
+            setNotifications(res.data as NotificationItem[]);
+          }
+        })
+        .finally(() => {
+          isFetching = false;
+        });
+    };
+
+    const pollInterval = setInterval(fetchNotifications, 30000);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        fetchNotifications();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
       clearInterval(pollInterval);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       if (socket) socket.disconnect();
       window.removeEventListener("icc-notifications-updated", handleNotifsUpdate);
     };
@@ -191,6 +230,7 @@ export function Header({
   };
 
   const markAllNotifsRead = async () => {
+    taskStore.markAllNotificationsRead();
     await markAllHeaderNotificationsReadAction();
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
   };
@@ -335,45 +375,33 @@ export function Header({
                 <Send className="h-4 w-4 text-chasing" />
                 <span>Assign Task / Chase</span>
               </button>
-              <button
-                type="button"
-                onMouseEnter={() => router.prefetch("/inbox")}
-                onTouchStart={() => router.prefetch("/inbox")}
-                onClick={() => {
-                  setIsAddMenuOpen(false);
-                  router.push("/inbox");
-                }}
+              <Link
+                href="/inbox"
+                prefetch={true}
+                onClick={() => setIsAddMenuOpen(false)}
                 className="w-full flex items-center gap-2 px-2.5 py-2 hover:bg-ground rounded-control text-ink text-left transition-colors"
               >
                 <MessageSquare className="h-4 w-4 text-accent" />
                 <span>Raise a Request</span>
-              </button>
-              <button
-                type="button"
-                onMouseEnter={() => router.prefetch("/calendar")}
-                onTouchStart={() => router.prefetch("/calendar")}
-                onClick={() => {
-                  setIsAddMenuOpen(false);
-                  router.push("/calendar");
-                }}
+              </Link>
+              <Link
+                href="/calendar"
+                prefetch={true}
+                onClick={() => setIsAddMenuOpen(false)}
                 className="w-full flex items-center gap-2 px-2.5 py-2 hover:bg-ground rounded-control text-ink text-left transition-colors"
               >
                 <Calendar className="h-4 w-4 text-mutedText" />
                 <span>Schedule Meeting / Event</span>
-              </button>
-              <button
-                type="button"
-                onMouseEnter={() => router.prefetch("/attendance")}
-                onTouchStart={() => router.prefetch("/attendance")}
-                onClick={() => {
-                  setIsAddMenuOpen(false);
-                  router.push("/attendance");
-                }}
+              </Link>
+              <Link
+                href="/attendance"
+                prefetch={true}
+                onClick={() => setIsAddMenuOpen(false)}
                 className="w-full flex items-center gap-2 px-2.5 py-2 hover:bg-ground rounded-control text-ink text-left transition-colors"
               >
                 <LogIn className="h-4 w-4 text-primary" />
                 <span>Check In / Out (v1.1)</span>
-              </button>
+              </Link>
             </div>
           )}
         </div>
@@ -412,38 +440,50 @@ export function Header({
                     No notifications
                   </div>
                 ) : (
-                  notifications.map((n) => {
-                    const displayTime =
-                      n.time === "Just now" || !n.time
-                        ? formatNotificationTime(n.timestamp || Date.now())
-                        : n.time;
-                    return (
-                      <div
-                        key={n.id}
-                        onClick={async () => {
-                          setIsNotifOpen(false);
-                          if (!n.read) {
-                            setNotifications((prev) =>
-                              prev.map((item) => (item.id === n.id ? { ...item, read: true } : item))
-                            );
-                            await markSingleNotificationReadAction(n.id);
-                          }
-                          router.push(n.link);
-                        }}
-                        className={`p-2 rounded-control border border-line/60 hover:bg-surface-alt cursor-pointer transition-colors ${
-                          !n.read ? "bg-ground font-medium" : "text-mutedText"
-                        }`}
-                      >
-                        <div className="text-xs text-ink leading-snug">{n.title}</div>
+                  [...notifications]
+                    .sort((a, b) => {
+                      const tsA = a.timestamp || (a.id && a.id.match(/^n-(\d{10,})/) ? parseInt(a.id.match(/^n-(\d{10,})/)![1], 10) : 0);
+                      const tsB = b.timestamp || (b.id && b.id.match(/^n-(\d{10,})/) ? parseInt(b.id.match(/^n-(\d{10,})/)![1], 10) : 0);
+                      return tsB - tsA;
+                    })
+                    .map((n) => {
+                      const ts =
+                        n.timestamp ||
+                        (n.id && n.id.match(/^n-(\d{10,})/)
+                          ? parseInt(n.id.match(/^n-(\d{10,})/)![1], 10)
+                          : undefined);
+                      const displayTime = ts
+                        ? formatNotificationTime(ts)
+                        : (n.time === "Just now" || !n.time
+                            ? formatNotificationTime(Date.now())
+                            : n.time);
+                      return (
                         <div
-                          className="text-[10px] text-mutedText font-mono mt-1"
-                          title={n.timestamp ? new Date(n.timestamp).toLocaleString() : undefined}
+                          key={n.id}
+                          onClick={async () => {
+                            setIsNotifOpen(false);
+                            if (!n.read) {
+                              setNotifications((prev) =>
+                                prev.map((item) => (item.id === n.id ? { ...item, read: true } : item))
+                              );
+                              await markSingleNotificationReadAction(n.id);
+                            }
+                            router.push(n.link);
+                          }}
+                          className={`p-2 rounded-control border border-line/60 hover:bg-surface-alt cursor-pointer transition-colors ${
+                            !n.read ? "bg-ground font-medium" : "text-mutedText"
+                          }`}
                         >
-                          {displayTime}
+                          <div className="text-xs text-ink leading-snug">{n.title}</div>
+                          <div
+                            className="text-[10px] text-mutedText font-mono mt-1"
+                            title={ts ? new Date(ts).toLocaleString() : undefined}
+                          >
+                            {displayTime}
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })
+                      );
+                    })
                 )}
               </div>
             </div>
@@ -502,15 +542,18 @@ export function Header({
                 <span>Audit Log</span>
               </Link>
               <div className="border-t border-line my-1" />
-              <Link
-                href="/login"
-                prefetch={true}
-                onClick={() => setIsUserMenuOpen(false)}
-                className="flex items-center gap-2 px-2.5 py-1.5 hover:bg-danger/10 text-danger rounded-control transition-colors"
+              <button
+                type="button"
+                onClick={async () => {
+                  setIsUserMenuOpen(false);
+                  await logoutAction();
+                  window.location.href = "/login";
+                }}
+                className="w-full flex items-center gap-2 px-2.5 py-1.5 hover:bg-danger/10 text-danger rounded-control transition-colors text-xs text-left cursor-pointer font-normal"
               >
                 <LogOut className="h-4 w-4" />
                 <span>Sign Out</span>
-              </Link>
+              </button>
             </div>
           )}
         </div>

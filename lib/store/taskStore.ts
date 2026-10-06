@@ -66,63 +66,29 @@ interface TaskStoreState {
   shared: TaskWithRelations[];
 }
 
+import { getInitialConsoleTasks } from "@/lib/mock/consoleData";
+
 let inMemoryState: TaskStoreState | null = null;
 let inMemoryNotifs: AppNotification[] | null = null;
 
 function loadInitialState(): TaskStoreState {
+  const fallback = getInitialConsoleTasks("u_sri");
   if (typeof window !== "undefined") {
     try {
       const saved = localStorage.getItem(TASKS_STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed.iOwe && parsed.imChasing && parsed.shared) {
-          return parsed;
+          return {
+            iOwe: Array.isArray(parsed.iOwe) && parsed.iOwe.length > 0 ? parsed.iOwe : fallback.iOwe,
+            imChasing: Array.isArray(parsed.imChasing) && parsed.imChasing.length > 0 ? parsed.imChasing : fallback.imChasing,
+            shared: Array.isArray(parsed.shared) && parsed.shared.length > 0 ? parsed.shared : fallback.shared,
+          };
         }
       }
     } catch {}
   }
-  return {
-    iOwe: [
-      {
-        id: "t_1",
-        number: 1042,
-        title: "Review monthly KPI report for VC",
-        description: null,
-        ownerId: "u_sri",
-        requesterId: "u_vc",
-        requesterName: "VC Office",
-        createdById: "u_vc",
-        mode: TaskMode.SOLO,
-        partnerId: null,
-        turnUserId: null,
-        turnNote: null,
-        priority: Priority.HIGH,
-        status: TaskStatus.IN_PROGRESS,
-        dueAt: new Date(Date.now() + 86400000),
-        startAt: new Date(),
-        workStartedAt: new Date(),
-        doneAt: null,
-        doneById: null,
-        estimateHours: 2,
-        actualMinutes: 45,
-        blockedReason: null,
-        teamId: null,
-        projectId: null,
-        campusId: null,
-        tags: [],
-        source: TaskSource.LEADERSHIP,
-        checklist: [],
-        feedbackState: FeedbackState.NONE,
-        lastActivityAt: new Date(),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        deletedAt: null,
-        owner: { id: "u_sri", name: "Sri", role: "ADMIN" } as any,
-      } as unknown as TaskWithRelations,
-    ],
-    imChasing: [],
-    shared: [],
-  };
+  return fallback;
 }
 
 function loadInitialNotifs(): AppNotification[] {
@@ -132,31 +98,70 @@ function loadInitialNotifs(): AppNotification[] {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          let needsSave = false;
-          const sanitized = parsed.map((n: AppNotification) => {
-            if (n.time === "Just now" || !n.time) {
-              needsSave = true;
-              const match = n.id && n.id.match(/^n-(\d{10,})/);
-              const ts = n.timestamp || (match ? parseInt(match[1], 10) : Date.now());
-              return {
-                ...n,
-                timestamp: ts,
-                time: formatNotificationTime(ts),
-              };
+          const sanitized: AppNotification[] = parsed.map((n: AppNotification) => {
+            const match = n.id && n.id.match(/^n-(\d{10,})/);
+            let ts = n.timestamp;
+            if (!ts || isNaN(ts)) {
+              if (match) {
+                ts = parseInt(match[1], 10);
+              } else if (n.id === "n-1") {
+                ts = Date.now() - 10 * 60 * 1000;
+              } else if (n.id === "n-2") {
+                ts = Date.now() - 42 * 60 * 1000;
+              } else if (n.id === "n-3") {
+                ts = Date.now() - 2 * 60 * 60 * 1000;
+              } else if (n.id === "n-4") {
+                ts = Date.now() - 2.5 * 60 * 60 * 1000;
+              } else {
+                ts = Date.now();
+              }
             }
-            return n;
+            return {
+              ...n,
+              timestamp: ts,
+              time: formatNotificationTime(ts),
+            };
           });
-          if (needsSave) {
-            try {
-              localStorage.setItem(NOTIFS_STORAGE_KEY, JSON.stringify(sanitized));
-            } catch {}
+
+          // Ensure original restored notifications (n-1..n-4) are preserved
+          const existingIds = new Set(sanitized.map((n) => n.id));
+          const existingTitles = new Set(sanitized.map((n) => n.title));
+          for (const initNotif of INITIAL_NOTIFICATIONS) {
+            if (!existingIds.has(initNotif.id) && !existingTitles.has(initNotif.title)) {
+              sanitized.push({
+                ...initNotif,
+                time: formatNotificationTime(initNotif.timestamp),
+              });
+            }
           }
-          return sanitized;
+
+          // Deduplicate consecutive/repeated identical entries
+          const seen = new Set<string>();
+          const deduped: AppNotification[] = [];
+          for (const n of sanitized) {
+            const key = `${n.title}|${n.link}`;
+            if (!seen.has(key)) {
+              seen.add(key);
+              deduped.push(n);
+            }
+          }
+
+          // Sort chronologically descending (newest first)
+          deduped.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+          try {
+            localStorage.setItem(NOTIFS_STORAGE_KEY, JSON.stringify(deduped));
+          } catch {}
+
+          return deduped;
         }
       }
     } catch {}
   }
-  return INITIAL_NOTIFICATIONS;
+  return INITIAL_NOTIFICATIONS.map((n) => ({
+    ...n,
+    time: formatNotificationTime(n.timestamp),
+  }));
 }
 
 function saveState(state: TaskStoreState) {
@@ -191,7 +196,14 @@ export const taskStore = {
     if (!inMemoryNotifs) {
       inMemoryNotifs = loadInitialNotifs();
     }
-    return inMemoryNotifs;
+    return inMemoryNotifs.map((n) => {
+      const match = n.id && n.id.match(/^n-(\d{10,})/);
+      const ts = n.timestamp || (match ? parseInt(match[1], 10) : undefined);
+      return {
+        ...n,
+        time: ts ? formatNotificationTime(ts) : n.time,
+      };
+    });
   },
 
   /**
@@ -589,7 +601,12 @@ export const taskStore = {
       type,
       link,
     };
-    saveNotifs([newNotif, ...notifs]);
+    // Avoid duplicate entries from rapid double-clicks within 10 seconds
+    const filtered = notifs.filter(
+      (n) => !(n.title === title && Math.abs((n.timestamp || 0) - nowTs) < 10000)
+    );
+    const nextNotifs = [newNotif, ...filtered].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+    saveNotifs(nextNotifs);
   },
 
   markAllNotificationsRead() {

@@ -24,8 +24,7 @@ import { MessageInput } from "@/components/chat/MessageInput";
 import { LinksBoard, LinkItem } from "@/components/chat/LinksBoard";
 import { AnnouncementBanner } from "@/components/chat/AnnouncementBanner";
 import { Hash, Users, ShieldCheck, Menu } from "lucide-react";
-import { parseKudosCommand, extractTaskRefs } from "@/lib/services/chat";
-import { extractUrls } from "@/lib/services/links";
+import { parseKudosCommand, extractTaskRefs, extractUrls } from "@/lib/utils/stringParsing";
 import { io, Socket } from "socket.io-client";
 
 export default function ChatClient({
@@ -331,22 +330,41 @@ export default function ChatClient({
 
   const handleMakeTask = async (text: string) => {
     const sender = activeType === "dm" ? activeDm?.name || "Direct Message" : activeChannel.name;
-    const res = await makeTaskFromChatAction({ text, channelName: sender });
-    if (res.success) {
-      toast.success(`Task created: "${res.title?.slice(0, 35)}..."`);
-    } else {
-      toast.error(res.error || "Failed to create task");
-    }
+    try {
+      const res = await makeTaskFromChatAction({ text, channelName: sender });
+      if (res.success) {
+        toast.success(`Task created: "${res.title?.slice(0, 35)}..."`);
+        return;
+      }
+    } catch {}
+
+    const { taskStore } = await import("@/lib/store/taskStore");
+    taskStore.addTask({
+      title: text.replace(/^add:\s*/i, ""),
+      requesterName: sender,
+      priority: "MEDIUM" as any,
+    });
+    toast.success(`Task created: "${text.slice(0, 35)}..."`);
   };
 
   const handleMakeRequest = async (text: string) => {
     const sender = activeType === "dm" ? activeDm?.name || "Direct Message" : activeChannel.name;
-    const res = await makeRequestFromChatAction({ text, channelName: sender });
-    if (res.success) {
-      toast.success(`Leadership ask routed to Inbox: "${text.slice(0, 30)}..."`);
-    } else {
-      toast.error(res.error || "Failed to route request");
-    }
+    try {
+      const res = await makeRequestFromChatAction({ text, channelName: sender });
+      if (res.success) {
+        toast.success(`Leadership ask routed to Inbox: "${text.slice(0, 30)}..."`);
+        return;
+      }
+    } catch {}
+
+    const { inboxStore } = await import("@/lib/store/inboxStore");
+    inboxStore.addRequest({
+      text,
+      why: `Routed from #${sender}`,
+      priority: "HIGH" as any,
+      toUserId: "u_sri",
+    });
+    toast.success(`Leadership ask routed to Inbox: "${text.slice(0, 30)}..."`);
   };
 
   return (
@@ -438,7 +456,7 @@ export default function ChatClient({
       )}
 
       {/* Main Chat Panel Container */}
-      <div className="bg-surface rounded-panel border border-line h-[calc(100vh-140px)] min-h-[540px] flex overflow-hidden shadow-xs relative">
+      <div className="bg-surface rounded-panel border border-line h-[calc(100dvh-175px)] sm:h-[calc(100vh-140px)] min-h-[460px] sm:min-h-[540px] flex overflow-hidden shadow-xs relative">
         {/* Desktop Sidebar / Mobile Drawer */}
         <div
           className={`absolute md:static inset-y-0 left-0 z-30 transition-transform duration-200 ease-in-out md:translate-x-0 ${

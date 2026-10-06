@@ -196,7 +196,7 @@ export function DayScheduleView({
                     matchedEvents.length === 0 && (
                       <button
                         onClick={() => setSelectedSlot(slot)}
-                        className="opacity-0 group-hover:opacity-100 text-[11px] text-mutedText hover:text-primary transition-opacity"
+                        className="opacity-60 sm:opacity-0 sm:group-hover:opacity-100 text-[11px] text-mutedText hover:text-primary transition-opacity cursor-pointer"
                       >
                         + Add to-do at {slot}
                       </button>

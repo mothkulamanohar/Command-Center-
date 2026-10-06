@@ -1,17 +1,8 @@
 import { db } from "@/lib/db";
 import { UserContext } from "@/lib/auth/can";
 
-const URL_REGEX = /(https?:\/\/[^\s]+)/g;
-
-/**
- * Extracts all URLs from a text string
- */
-export function extractUrls(text: string): string[] {
-  const matches = text.match(URL_REGEX);
-  if (!matches) return [];
-  const cleaned = matches.map((u) => u.replace(/[.,;:!?\)\]>]+$/, ""));
-  return Array.from(new Set(cleaned));
-}
+export { URL_REGEX, extractUrls } from "@/lib/utils/stringParsing";
+import { extractUrls } from "@/lib/utils/stringParsing";
 
 /**
  * F-CHAT-09: Save URLs shared in channel to team Links board

@@ -36,7 +36,7 @@ export function BugTrackerModal({ isOpen, onClose, onSubmit }: BugTrackerModalPr
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-surface rounded-panel border border-line w-full max-w-lg shadow-panel animate-in fade-in zoom-in-95">
+      <div className="bg-surface rounded-panel border border-line w-full max-w-lg shadow-panel animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto">
         <div className="p-4 border-b border-line flex items-center justify-between bg-surface-alt/50">
           <div className="flex items-center gap-2">
             <Bug className="h-4 w-4 text-danger" />

@@ -3,7 +3,7 @@
 import { Task, User, Priority, TaskMode, TaskStatus } from "@prisma/client";
 import { formatOrgDate } from "@/lib/time";
 import { CheckCircle2, Circle, Clock, ArrowRight, AlertTriangle, UserCheck } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, memo } from "react";
 
 interface TaskWithRelations extends Task {
   owner?: User | null;
@@ -16,7 +16,7 @@ interface TaskCardProps {
   onPassTurn?: (taskId: string) => void;
 }
 
-export function TaskCard({ task, currentUserId, onStatusChange, onPassTurn }: TaskCardProps) {
+export const TaskCard = memo(function TaskCard({ task, currentUserId, onStatusChange, onPassTurn }: TaskCardProps) {
   const [status, setStatus] = useState<TaskStatus>(task.status);
   const isDone = status === TaskStatus.DONE;
   const isOverdue = task.dueAt && new Date(task.dueAt) < new Date() && !isDone;
@@ -101,7 +101,7 @@ export function TaskCard({ task, currentUserId, onStatusChange, onPassTurn }: Ta
       )}
 
       {/* Bottom Row: Metadata & Tags */}
-      <div className="flex items-center justify-between pt-1 border-t border-line/40 text-[11px]">
+      <div className="flex items-center justify-between pt-1 border-t border-line/40 text-[11px] flex-wrap gap-2">
         <div className="flex items-center gap-2">
           {task.owner && (
             <span className="inline-flex items-center gap-1 text-mutedText font-mono">
@@ -134,4 +134,4 @@ export function TaskCard({ task, currentUserId, onStatusChange, onPassTurn }: Ta
       </div>
     </div>
   );
-}
+});

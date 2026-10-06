@@ -51,12 +51,7 @@ export function BottomNav() {
                   prefetch={true}
                   onMouseEnter={() => router.prefetch(item.href)}
                   onTouchStart={() => router.prefetch(item.href)}
-                  onClick={(e) => {
-                    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-                    e.preventDefault();
-                    router.push(item.href);
-                    setTimeout(() => setShowMore(false), 50);
-                  }}
+                  onClick={() => setShowMore(false)}
                   className={`px-3 py-2.5 rounded-control text-xs font-medium border transition-colors active:opacity-80 ${
                     pathname.startsWith(item.href)
                       ? "bg-primary text-white border-primary font-semibold"
@@ -78,13 +73,6 @@ export function BottomNav() {
         <Link
           href="/console"
           prefetch={true}
-          onMouseEnter={() => router.prefetch("/console")}
-          onTouchStart={() => router.prefetch("/console")}
-          onClick={(e) => {
-            if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-            e.preventDefault();
-            router.push("/console");
-          }}
           className={`flex flex-col items-center justify-center w-16 h-12 rounded-control active:opacity-80 transition-all ${
             pathname === "/console" ? "text-white font-semibold" : "text-[#9BB1D0]"
           }`}
@@ -97,13 +85,6 @@ export function BottomNav() {
         <Link
           href="/inbox"
           prefetch={true}
-          onMouseEnter={() => router.prefetch("/inbox")}
-          onTouchStart={() => router.prefetch("/inbox")}
-          onClick={(e) => {
-            if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-            e.preventDefault();
-            router.push("/inbox");
-          }}
           className={`relative flex flex-col items-center justify-center w-16 h-12 rounded-control active:opacity-80 transition-all ${
             pathname === "/inbox" ? "text-white font-semibold" : "text-[#9BB1D0]"
           }`}
@@ -117,13 +98,6 @@ export function BottomNav() {
         <Link
           href="/chat"
           prefetch={true}
-          onMouseEnter={() => router.prefetch("/chat")}
-          onTouchStart={() => router.prefetch("/chat")}
-          onClick={(e) => {
-            if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-            e.preventDefault();
-            router.push("/chat");
-          }}
           className={`flex flex-col items-center justify-center w-16 h-12 rounded-control active:opacity-80 transition-all ${
             pathname === "/chat" ? "text-white font-semibold" : "text-[#9BB1D0]"
           }`}

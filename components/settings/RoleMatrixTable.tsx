@@ -143,19 +143,19 @@ export function RoleMatrixTable() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             <input
               type="text"
               placeholder="Search privileges..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="px-2.5 py-1 text-xs bg-surface border border-line rounded-control text-ink focus:outline-none w-48 font-mono"
+              className="px-2.5 py-1 text-xs bg-surface border border-line rounded-control text-ink focus:outline-none w-full sm:w-48 font-mono"
             />
           </div>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
+          <table className="w-full min-w-[700px] text-left text-xs border-collapse">
             <thead>
               <tr className="bg-ground/70 border-b border-line text-[11px] font-mono text-mutedText">
                 <th className="p-3 w-72 font-semibold">Privilege & Scope</th>

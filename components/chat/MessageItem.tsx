@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { TaskChip } from "./TaskChip";
 import { KudosCard } from "./KudosCard";
-import { extractTaskRefs } from "@/lib/services/chat";
+import { extractTaskRefs } from "@/lib/utils/stringParsing";
 import { MoreHorizontal, Smile, CheckSquare, PlusCircle, Copy, Check } from "lucide-react";
 
 export interface ChatMessage {

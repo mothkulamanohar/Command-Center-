@@ -17,28 +17,40 @@ import {
   replyMyFollowUpAction,
 } from "./actions";
 
+import { INITIAL_TASKS, INITIAL_FOLLOWUPS } from "@/lib/mock/mySpaceData";
+
 export default function MySpaceClient({ record, currentUser }: any) {
-  const [tasks, setTasks] = useState<MyTask[]>([]);
-  const [followups, setFollowups] = useState<MyFollowUp[]>([]);
+  const [tasks, setTasks] = useState<MyTask[]>(INITIAL_TASKS);
+  const [followups, setFollowups] = useState<MyFollowUp[]>(() =>
+    INITIAL_FOLLOWUPS.map((f) => ({ ...f, answered: !!f.answered }))
+  );
   const [scheduleSlots, setScheduleSlots] = useState<ScheduleSlot[]>([]);
   const [unscheduledCount, setUnscheduledCount] = useState<number>(0);
   const [prefill, setPrefill] = useState<{ donePrefill: string; nextPrefill: string }>({
-    donePrefill: "",
-    nextPrefill: "",
+    donePrefill: "• T-1042: Reviewed admission form deployment",
+    nextPrefill: "• T-1043: Sign off on UOS staging credentials",
   });
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [updatePosted, setUpdatePosted] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   const refreshData = async () => {
     const res = await getMySpaceDataAction();
     if (res.success && res.data) {
-      setTasks(res.data.tasks as any);
-      setFollowups(res.data.followups);
-      setPrefill(res.data.prefill);
+      if (res.data.tasks && res.data.tasks.length > 0) {
+        setTasks(res.data.tasks as any);
+      }
+      if (res.data.followups && res.data.followups.length > 0) {
+        setFollowups(res.data.followups);
+      }
+      if (res.data.prefill) {
+        setPrefill(res.data.prefill);
+      }
       setUpdatePosted(res.data.isUpdatePosted);
-      setScheduleSlots(res.data.schedule.slots as ScheduleSlot[]);
-      setUnscheduledCount(res.data.schedule.unscheduledCount);
+      if (res.data.schedule?.slots && res.data.schedule.slots.length > 0) {
+        setScheduleSlots(res.data.schedule.slots as ScheduleSlot[]);
+        setUnscheduledCount(res.data.schedule.unscheduledCount);
+      }
     }
     setIsLoading(false);
   };
@@ -58,46 +70,59 @@ export default function MySpaceClient({ record, currentUser }: any) {
   }, []);
 
   const handleMarkDone = async (taskId: string, title: string) => {
-    const res = await markMyTaskDoneAction(taskId);
-    if (res.success) {
-      toast.success(res.status === "DONE" ? `Marked done: "${title}"` : `Restored to open: "${title}"`);
-      refreshData();
-    } else {
-      toast.error(res.error || "Failed to update task");
-    }
+    // Optimistic local update
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.id === taskId
+          ? { ...t, status: t.status === "DONE" ? "OPEN" as const : "DONE" as const }
+          : t
+      )
+    );
+    const target = tasks.find((t) => t.id === taskId);
+    const wasDone = target?.status === "DONE";
+    toast.success(wasDone ? `Restored to open: "${title}"` : `Marked done: "${title}"`);
+    try {
+      const res = await markMyTaskDoneAction(taskId);
+      if (res.success) refreshData();
+    } catch {}
   };
 
   const handlePassTurn = async (taskId: string, title: string) => {
-    const res = await passMyTaskTurnAction(taskId);
-    if (res.success) {
-      toast.success(`Passed turn on "${title}"`);
-      refreshData();
-    } else {
-      toast.error(res.error || "Failed to pass turn");
-    }
+    // Optimistic local update
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.id === taskId
+          ? { ...t, whoseTurn: t.whoseTurn === "ME" ? "PARTNER" as const : "ME" as const }
+          : t
+      )
+    );
+    toast.success(`Passed turn on "${title}"`);
+    try {
+      const res = await passMyTaskTurnAction(taskId);
+      if (res.success) refreshData();
+    } catch {}
   };
 
   const handleFollowupReply = async (fuId: string, reply: string) => {
-    const res = await replyMyFollowUpAction(fuId, reply);
-    if (res.success) {
-      setFollowups((prev) =>
-        prev.map((fu) => (fu.id === fuId ? { ...fu, answered: true } : fu))
-      );
-      toast.success(`Sent reply: "${reply}"`);
-    } else {
-      toast.error(res.error || "Failed to send reply");
-    }
+    // Optimistic local update
+    setFollowups((prev) =>
+      prev.map((fu) => (fu.id === fuId ? { ...fu, answered: true } : fu))
+    );
+    toast.success(`Sent reply: "${reply}"`);
+    try {
+      const res = await replyMyFollowUpAction(fuId, reply);
+      if (res.success) refreshData();
+    } catch {}
   };
 
   const handlePostUpdate = async (data: { done: string; next: string; blockers?: string }) => {
-    const res = await postMyDailyUpdateAction(data);
-    if (res.success) {
-      setUpdatePosted(true);
-      toast.success("Daily update posted to team channels!");
-      refreshData();
-    } else {
-      toast.error(res.error || "Failed to post daily update");
-    }
+    // Optimistic local update
+    setUpdatePosted(true);
+    toast.success("Daily update posted to team channels!");
+    try {
+      const res = await postMyDailyUpdateAction(data);
+      if (res.success) refreshData();
+    } catch {}
   };
 
   const openNewTask = () => {

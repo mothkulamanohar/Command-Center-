@@ -306,20 +306,14 @@ export function Sidebar({
               key={item.href}
               href={item.href}
               prefetch={true}
-              onClick={(e) => {
-                if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-                e.preventDefault();
-                if (pathname !== item.href) {
-                  setPendingPath(item.href);
-                  router.push(item.href);
-                }
+              onMouseEnter={() => router.prefetch(item.href)}
+              onTouchStart={() => router.prefetch(item.href)}
+              onClick={() => {
                 if (onLinkClick) {
-                  setTimeout(() => {
-                    onLinkClick();
-                  }, 50);
+                  onLinkClick();
                 }
               }}
-              className={`flex items-center justify-between px-3 py-2 rounded-control text-xs font-medium transition-all duration-150 min-h-touch cursor-pointer active:scale-[0.98] ${
+              className={`flex items-center justify-between h-8 shrink-0 px-3 rounded-control text-xs font-medium transition-colors duration-150 cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-white/20 ${
                 isActive
                   ? "bg-[#284E82] text-white shadow-xs font-semibold ring-1 ring-white/10"
                   : "text-[#C2D2E8] hover:bg-[#203F6B] hover:text-white"

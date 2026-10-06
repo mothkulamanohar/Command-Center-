@@ -57,6 +57,13 @@ export function formatNotificationTime(date?: Date | string | number | null): st
     if (dateStr === nowStr) {
       return `Today, ${timeStr}`;
     }
+
+    const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const yesterdayStr = formatInTimeZone(yesterday, ORG_TIMEZONE, "yyyy-MM-dd");
+    if (dateStr === yesterdayStr) {
+      return `Yesterday, ${timeStr}`;
+    }
+
     return formatInTimeZone(d, ORG_TIMEZONE, "dd MMM, hh:mm a");
   } catch {
     return formatOrgTime(d, "dd MMM, hh:mm a");

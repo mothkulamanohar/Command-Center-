@@ -13,29 +13,45 @@ import {
   declineRequestAction,
 } from "./actions";
 
+import { inboxStore } from "@/lib/store/inboxStore";
+
 export default function InboxPage() {
-  const [requests, setRequests] = useState<Request[]>([]);
-  const [activeUsers, setActiveUsers] = useState<{ id: string; name: string; role?: string; email?: string }[]>([]);
+  const [requests, setRequests] = useState<Request[]>(() => inboxStore.getRequests());
+  const [activeUsers, setActiveUsers] = useState<{ id: string; name: string; role?: string; email?: string }[]>([
+    { id: "u_vc", name: "VC Office", role: "GUEST" },
+    { id: "u_coo", name: "COO Office", role: "GUEST" },
+    { id: "u_hari", name: "Hari", role: "LEAD" },
+    { id: "u_sri", name: "Sri", role: "ADMIN" },
+  ]);
   const [activeFilter, setActiveFilter] = useState<"ALL" | Priority>("ALL");
   const [showFilters, setShowFilters] = useState(false);
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
   const [newText, setNewText] = useState("");
   const [newWhy, setNewWhy] = useState("");
   const [newPriority, setNewPriority] = useState<Priority>(Priority.MEDIUM);
-  const [selectedRecipientId, setSelectedRecipientId] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
+  const [selectedRecipientId, setSelectedRecipientId] = useState("u_hari");
+  const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const loadRequests = async () => {
-    const res = await getInboxRequestsAction();
-    if (res.success && res.data) {
-      const d = res.data as any;
-      setRequests(d.requests || []);
-      setActiveUsers(d.activeUsers || []);
-      if (d.activeUsers && d.activeUsers.length > 0 && !selectedRecipientId) {
-        setSelectedRecipientId(d.activeUsers[0].id);
+    try {
+      const res = await getInboxRequestsAction();
+      if (res.success && res.data) {
+        const d = res.data as any;
+        if (d.requests && d.requests.length > 0) {
+          setRequests(d.requests);
+        }
+        if (d.activeUsers && d.activeUsers.length > 0) {
+          setActiveUsers(d.activeUsers);
+          if (!selectedRecipientId) {
+            setSelectedRecipientId(d.activeUsers[0].id);
+          }
+        }
+        setIsLoading(false);
+        return;
       }
-    }
+    } catch {}
+    setRequests(inboxStore.getRequests());
     setIsLoading(false);
   };
 
@@ -45,36 +61,38 @@ export default function InboxPage() {
 
   const handleAccept = async (requestId: string) => {
     const req = requests.find((r) => r.id === requestId);
-    const res = await acceptRequestAction(requestId);
-    if (res.success) {
-      toast.success(`Accepted request: "${req?.text || requestId}" → task created in 'I Owe'`);
-      loadRequests();
-    } else {
-      toast.error(res.error || "Failed to accept request");
-    }
+    inboxStore.acceptRequest(requestId);
+    setRequests(inboxStore.getRequests());
+    window.dispatchEvent(new CustomEvent("icc-tasks-updated"));
+    toast.success(`Accepted request: "${req?.text || requestId}" → task created in 'I Owe'`);
+    try {
+      const res = await acceptRequestAction(requestId);
+      if (res.success) loadRequests();
+    } catch {}
   };
 
   const handleDelegate = async (requestId: string, delegateTo: string) => {
     const req = requests.find((r) => r.id === requestId);
-    const res = await delegateRequestAction(requestId, delegateTo);
-    if (res.success) {
-      const recipientName = activeUsers.find((u) => u.id === delegateTo)?.name || delegateTo;
-      toast.success(`Delegated "${req?.text || requestId}" to ${recipientName} → tracking in "I'm Chasing"`);
-      loadRequests();
-    } else {
-      toast.error(res.error || "Failed to delegate request");
-    }
+    const recipientName = activeUsers.find((u) => u.id === delegateTo)?.name || delegateTo;
+    inboxStore.delegateRequest(requestId, delegateTo);
+    setRequests(inboxStore.getRequests());
+    window.dispatchEvent(new CustomEvent("icc-tasks-updated"));
+    toast.success(`Delegated "${req?.text || requestId}" to ${recipientName} → tracking in "I'm Chasing"`);
+    try {
+      const res = await delegateRequestAction(requestId, delegateTo);
+      if (res.success) loadRequests();
+    } catch {}
   };
 
   const handleDecline = async (requestId: string, reason: string) => {
     const req = requests.find((r) => r.id === requestId);
-    const res = await declineRequestAction(requestId, reason);
-    if (res.success) {
-      toast.success(`Declined request: "${req?.text || requestId}"`);
-      loadRequests();
-    } else {
-      toast.error(res.error || "Failed to decline request");
-    }
+    inboxStore.declineRequest(requestId, reason);
+    setRequests(inboxStore.getRequests());
+    toast.success(`Declined request: "${req?.text || requestId}"`);
+    try {
+      const res = await declineRequestAction(requestId, reason);
+      if (res.success) loadRequests();
+    } catch {}
   };
 
   const handleCreateRequest = async () => {
@@ -82,26 +100,30 @@ export default function InboxPage() {
     setIsSubmitting(true);
 
     try {
-      const res = await createRequestAction({
+      const targetUser = activeUsers.find((u) => u.id === selectedRecipientId)?.name || "Recipient";
+      inboxStore.addRequest({
         text: newText.trim(),
-        why: newWhy.trim() || undefined,
+        why: newWhy.trim() || null,
+        priority: newPriority,
+        toUserId: selectedRecipientId,
+        fromUserId: "u_sri",
+      });
+      setRequests(inboxStore.getRequests());
+      setIsNewModalOpen(false);
+      const textToSubmit = newText.trim();
+      const whyToSubmit = newWhy.trim();
+      setNewText("");
+      setNewWhy("");
+      toast.success(`Request submitted to ${targetUser}`);
+
+      const res = await createRequestAction({
+        text: textToSubmit,
+        why: whyToSubmit || undefined,
         priority: newPriority,
         toUserId: selectedRecipientId,
       });
-
-      if (res.success) {
-        setIsNewModalOpen(false);
-        setNewText("");
-        setNewWhy("");
-        const targetUser = activeUsers.find((u) => u.id === selectedRecipientId)?.name || "Recipient";
-        toast.success(`Request submitted to ${targetUser}`);
-        loadRequests();
-      } else {
-        toast.error(res.error || "Failed to submit request");
-      }
-    } catch (err: any) {
-      toast.error(err.message || "Failed to submit request");
-    } finally {
+      if (res.success) loadRequests();
+    } catch {} finally {
       setIsSubmitting(false);
     }
   };

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Sunrise, RefreshCw, AlertCircle, ChevronDown, ChevronUp, Bell, CheckCircle2 } from "lucide-react";
-import { MorningBriefData } from "@/lib/services/brief";
+import type { MorningBriefData } from "@/lib/services/brief";
 
 interface MorningBriefCardProps {
   initialData: MorningBriefData;

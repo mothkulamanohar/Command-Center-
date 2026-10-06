@@ -79,6 +79,14 @@ export async function createSession(userId: string, keepSignedIn: boolean = fals
 export async function destroySession(): Promise<void> {
   const cookieStore = await cookies();
   cookieStore.delete(COOKIE_NAME);
+  cookieStore.set(COOKIE_NAME, "", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    expires: new Date(0),
+    maxAge: 0,
+  });
 }
 
 /**
@@ -118,11 +126,28 @@ export async function getSessionUser(): Promise<UserContext | null> {
     // Database connection timeout or dev standalone fallback
   }
 
-  const isHari = verified.userId.toLowerCase().includes("hari");
+  const uid = verified.userId.toLowerCase();
+  const isHari = uid.includes("hari");
+  const isJanardhan = uid.includes("janardhan");
+  const isDev = uid.includes("dev") || uid.includes("web") || uid.includes("backend");
+
+  let role: RoleKey = RoleKey.ADMIN;
+  let name = "Sri";
+  if (isHari) {
+    role = RoleKey.LEAD;
+    name = "Hari";
+  } else if (isJanardhan) {
+    role = RoleKey.MEMBER;
+    name = "Janardhan";
+  } else if (isDev) {
+    role = RoleKey.DEVELOPER;
+    name = uid.includes("web") ? "Dev Web" : "Dev Backend";
+  }
+
   return {
     id: verified.userId,
-    name: isHari ? "Hari" : "Sri",
-    role: isHari ? RoleKey.LEAD : RoleKey.ADMIN,
+    name,
+    role,
     teamIds: ["t-campus", "t-dev"],
     ledTeamIds: isHari ? ["t-campus"] : ["t-dev"],
   };

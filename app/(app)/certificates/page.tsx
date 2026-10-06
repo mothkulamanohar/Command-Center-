@@ -21,9 +21,45 @@ interface CertificateItem {
   verifyUrl: string;
 }
 
+const ORIGINAL_CERTS: CertificateItem[] = [
+  {
+    id: "cert-1",
+    number: "ICC-ACH-2026-0001",
+    code: "K7Q2M9XA4D",
+    recipientName: "Sri Ram",
+    kind: "APPRECIATION",
+    title: "Certificate of Achievement",
+    issuedAt: "29 Sep 2026",
+    state: "ISSUED",
+    verifyUrl: "/verify/ICC-ACH-2026-0001",
+  },
+  {
+    id: "cert-2",
+    number: "SMRU-IT-INT-2026-0042",
+    code: "K7Q2M9XA4D",
+    recipientName: "Intern Web A",
+    kind: "INTERNSHIP_COMPLETION",
+    title: "Internship Completion Certificate",
+    issuedAt: "15 Sep 2026",
+    state: "ISSUED",
+    verifyUrl: "/verify/SMRU-IT-INT-2026-0042",
+  },
+  {
+    id: "cert-3",
+    number: "SMRU-IT-INT-2026-0021",
+    code: "T3M5R8Q1LX",
+    recipientName: "Old Intern X",
+    kind: "INTERNSHIP_COMPLETION",
+    title: "Internship Completion Certificate",
+    issuedAt: "15 Aug 2026",
+    state: "REVOKED",
+    verifyUrl: "/verify/T3M5R8Q1LX",
+  },
+];
+
 export default function CertificatesPage() {
   const router = useRouter();
-  const [certs, setCerts] = useState<CertificateItem[]>([]);
+  const [certs, setCerts] = useState<CertificateItem[]>(ORIGINAL_CERTS);
   const [search, setSearch] = useState("");
   const [selectedKind, setSelectedKind] = useState("ALL");
   const [isIssueModalOpen, setIsIssueModalOpen] = useState(false);
@@ -34,8 +70,10 @@ export default function CertificatesPage() {
 
   useEffect(() => {
     getCertificatesAction().then((res) => {
-      if (res.success && res.data) {
-        setCerts(res.data as CertificateItem[]);
+      if (res.success && res.data && (res.data as CertificateItem[]).length > 0) {
+        const dbCerts = res.data as CertificateItem[];
+        const dbNumbers = new Set(dbCerts.map((c) => c.number));
+        setCerts([...dbCerts, ...ORIGINAL_CERTS.filter((c) => !dbNumbers.has(c.number))]);
       }
     });
   }, []);
@@ -105,7 +143,7 @@ export default function CertificatesPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <button
             type="button"
             onClick={handleExportCsv}
@@ -138,7 +176,7 @@ export default function CertificatesPage() {
           />
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {["ALL", "INTERNSHIP_COMPLETION", "APPRECIATION"].map((k) => (
             <button
               key={k}
@@ -158,7 +196,7 @@ export default function CertificatesPage() {
 
       {/* Register Table */}
       <div className="bg-surface rounded-panel border border-line shadow-xs overflow-x-auto">
-        <table className="w-full text-xs text-left border-collapse">
+        <table className="w-full min-w-[620px] text-xs text-left border-collapse">
           <thead>
             <tr className="border-b border-line bg-ground text-mutedText font-mono uppercase text-[10px]">
               <th className="p-3 font-semibold">Certificate Number</th>
@@ -211,7 +249,7 @@ export default function CertificatesPage() {
                       title="Open Public Verification Link"
                     >
                       <ExternalLink className="h-3 w-3" />
-                      <span>Verify</span>
+                      <span>Verify Certificate</span>
                     </a>
                     <Link
                       href={`/certificates/${cert.id}`}
@@ -220,7 +258,7 @@ export default function CertificatesPage() {
                       onTouchStart={() => router.prefetch(`/certificates/${cert.id}`)}
                       className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-primary/10 border border-primary/20 text-xs font-semibold text-primary hover:bg-primary/20 transition-colors"
                     >
-                      View
+                      View Certificate
                     </Link>
                   </div>
                 </td>
@@ -233,7 +271,7 @@ export default function CertificatesPage() {
       {/* Issue Certificate Modal */}
       {isIssueModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-surface rounded-panel border border-line w-full max-w-md shadow-panel p-5 space-y-4 animate-in fade-in">
+          <div className="bg-surface rounded-panel border border-line w-full max-w-md shadow-panel p-5 space-y-4 animate-in fade-in max-h-[90vh] overflow-y-auto">
             <h3 className="text-sm font-bold text-ink">Issue New Dynamic Certificate</h3>
             <form onSubmit={handleIssueSubmit} className="space-y-3 text-xs">
               <div>

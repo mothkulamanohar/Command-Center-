@@ -1,5 +1,5 @@
 import { Task, User, TaskMode, Priority, TaskStatus, TaskSource } from "@prisma/client";
-import { MorningBriefData } from "@/lib/services/brief";
+import type { MorningBriefData } from "@/lib/services/brief";
 import { PendingApprovalItem } from "@/components/followups/ApprovalQueueModal";
 
 export type TaskWithRelations = Task & { owner?: User | null };

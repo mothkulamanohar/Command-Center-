@@ -25,15 +25,17 @@ export interface FeedbackSubmission {
   ackAt?: string | null;
 }
 
+import { feedbackStore } from "@/lib/store/feedbackStore";
+
 export default function MyFeedbackPage() {
-  const [items, setItems] = useState<FeedbackSubmission[]>([]);
+  const [items, setItems] = useState<FeedbackSubmission[]>(() => feedbackStore.getSubmissions() as any);
   const [replyText, setReplyText] = useState<{ [id: string]: string }>({});
   const [activeReplyId, setActiveReplyId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   const loadFeedback = async () => {
     const res = await getFeedbackSubmissionsAction();
-    if (res.success && res.data) {
+    if (res.success && res.data && res.data.length > 0) {
       setItems(res.data as any);
     }
     setIsLoading(false);
@@ -47,27 +49,29 @@ export default function MyFeedbackPage() {
   const reworkCount = items.filter((i) => i.outcome === "REWORK").length;
 
   const handleAcknowledge = async (id: string) => {
-    const res = await acknowledgeFeedbackAction(id);
-    if (res.success) {
-      toast.success("Feedback acknowledged");
-      loadFeedback();
-    } else {
-      toast.error(res.error || "Failed to acknowledge feedback");
-    }
+    // Optimistic local update
+    feedbackStore.acknowledgeFeedback(id);
+    setItems((prev) => prev.map((i) => i.id === id ? { ...i, ackAt: new Date().toISOString() } : i));
+    toast.success("Feedback acknowledged");
+    try {
+      const res = await acknowledgeFeedbackAction(id);
+      if (res.success) loadFeedback();
+    } catch {}
   };
 
   const handleSendReply = async (id: string) => {
     const text = replyText[id];
     if (!text?.trim()) return;
 
-    const res = await replyFeedbackAction(id, text.trim());
-    if (res.success) {
-      setActiveReplyId(null);
-      toast.success("Reply sent to reviewer");
-      loadFeedback();
-    } else {
-      toast.error(res.error || "Failed to send reply");
-    }
+    // Optimistic local update
+    feedbackStore.replyFeedback(id, text.trim());
+    setItems((prev) => prev.map((i) => i.id === id ? { ...i, reply: text.trim() } : i));
+    setActiveReplyId(null);
+    toast.success("Reply sent to reviewer");
+    try {
+      const res = await replyFeedbackAction(id, text.trim());
+      if (res.success) loadFeedback();
+    } catch {}
   };
 
   return (

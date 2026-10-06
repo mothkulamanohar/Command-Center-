@@ -130,6 +130,109 @@ export default async function ChatPage() {
     console.warn("Database connection issue in ChatPage:", (err as Error)?.message || err);
   }
 
+  const ORIGINAL_CHANNELS = [
+    { id: "c-1", name: "smru-campus-it", slug: "smru-campus-it", kind: "TEAM", unreadCount: 0, presentCount: 5, totalMembers: 5 },
+    { id: "c-2", name: "dev-team", slug: "dev-team", kind: "TEAM", unreadCount: 2, presentCount: 3, totalMembers: 3 },
+    { id: "c-3", name: "uos-rollout", slug: "uos-rollout", kind: "ANNOUNCE", unreadCount: 0, presentCount: 4, totalMembers: 4 },
+  ];
+
+  const ORIGINAL_DMS = [
+    { id: "u-1", name: "Sri (IT Manager)", role: "LEAD", isOnline: true, attendanceStatus: "PRESENT" as const },
+    { id: "u-2", name: "Hari (Campus Lead)", role: "LEAD", isOnline: true, attendanceStatus: "PRESENT" as const },
+    { id: "u-3", name: "Janardhan (Support)", role: "MEMBER", isOnline: false, attendanceStatus: "ON_LEAVE" as const },
+    { id: "u-4", name: "Dev Web", role: "DEVELOPER", isOnline: true, attendanceStatus: "LATE" as const },
+  ];
+
+  const ORIGINAL_MESSAGES: Record<string, any[]> = {
+    "c-1": [
+      {
+        id: "m-1",
+        authorName: "Sri",
+        authorRole: "IT Manager",
+        body: "Good morning team! Please check T-1042 for today's lab switch deployment at SMRU.",
+        kind: "TEXT",
+        createdAt: "09:30 AM",
+        reactions: [{ emoji: "👍", count: 3, userReacted: true }],
+      },
+      {
+        id: "m-2",
+        authorName: "Hari",
+        authorRole: "Campus Lead",
+        body: "All replacement switches arrived. Docs are updated at https://wiki.smru.in/switch-upgrade.",
+        kind: "TEXT",
+        createdAt: "09:45 AM",
+        reactions: [{ emoji: "✔", count: 2, userReacted: false }],
+      },
+      {
+        id: "m-3",
+        authorName: "Janardhan",
+        authorRole: "Support Tech",
+        body: "/kudos @Hari for coordinating the physical rack re-cabling over the weekend!",
+        kind: "KUDOS",
+        meta: {
+          kudosTarget: "Hari",
+          kudosReason: "coordinating the physical rack re-cabling over the weekend!",
+        },
+        createdAt: "10:12 AM",
+      },
+    ],
+    "c-2": [
+      {
+        id: "m-4",
+        authorName: "Dev Web",
+        authorRole: "Developer",
+        body: "Next.js 15 PWA build is running smoothly. Testing T-1043 on local environment.",
+        kind: "TEXT",
+        createdAt: "10:30 AM",
+        reactions: [{ emoji: "🚀", count: 4, userReacted: true }],
+      },
+    ],
+    "c-3": [
+      {
+        id: "m-5",
+        authorName: "Sri",
+        authorRole: "IT Manager",
+        body: "UOS Rollout Phase 1 begins tomorrow across Main Campus Block A and B.",
+        kind: "ANNOUNCE",
+        createdAt: "Yesterday",
+      },
+    ],
+  };
+
+  const ORIGINAL_LINKS = [
+    {
+      id: "l-1",
+      url: "https://wiki.smru.in/switch-upgrade",
+      title: "Switch Upgrade Documentation",
+      channelName: "smru-campus-it",
+      authorName: "Hari",
+      createdAt: "Today 09:45 AM",
+    },
+    {
+      id: "l-2",
+      url: "https://grafana.internal.smru.in/d/core-network",
+      title: "Core Network Real-time Telemetry",
+      channelName: "smru-campus-it",
+      authorName: "Sri",
+      createdAt: "Yesterday",
+    },
+  ];
+
+  const ORIGINAL_USERS = [
+    { id: "u-1", name: "Sri", role: "ADMIN", email: "sri@smru.in" },
+    { id: "u-2", name: "Hari", role: "LEAD", email: "hari@smru.in" },
+    { id: "u-3", name: "Janardhan", role: "MEMBER", email: "janardhan@smru.in" },
+    { id: "u-4", name: "Dev Web", role: "DEVELOPER", email: "dev.web@smru.in" },
+    { id: "u-5", name: "Dev Backend", role: "DEVELOPER", email: "dev.api@smru.in" },
+    { id: "u-6", name: "Intern Web A", role: "INTERN", email: "intern.a@smru.in" },
+  ];
+
+  if (channels.length === 0) channels = ORIGINAL_CHANNELS;
+  if (directMessages.length === 0) directMessages = ORIGINAL_DMS;
+  if (Object.keys(initialMessagesByChannel).length === 0) initialMessagesByChannel = ORIGINAL_MESSAGES;
+  if (initialLinks.length === 0) initialLinks = ORIGINAL_LINKS;
+  if (allUsers.length === 0) allUsers = ORIGINAL_USERS;
+
   return (
     <Suspense fallback={<div className="p-8 text-center text-xs text-mutedText">Loading Chat...</div>}>
       <ChatClient

@@ -95,8 +95,8 @@ export function DocViewerModal({ isOpen, onClose, doc, onSave }: DocViewerModalP
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in">
-      <div className="bg-surface rounded-panel border border-line w-full max-w-3xl h-[85vh] flex flex-col shadow-panel animate-in zoom-in-95 overflow-hidden">
+    <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 animate-in fade-in">
+      <div className="bg-surface rounded-panel border border-line w-full max-w-3xl max-h-[92vh] h-[90vh] sm:h-[85vh] flex flex-col shadow-panel animate-in zoom-in-95 overflow-hidden">
         {/* Header */}
         <div className="p-3.5 sm:p-4 border-b border-line flex items-center justify-between bg-surface-alt/60 gap-3 shrink-0">
           <div className="flex items-center gap-2 min-w-0">

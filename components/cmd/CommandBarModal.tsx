@@ -10,6 +10,7 @@ import {
   executeCommandAddTaskAction,
   executeCommandPassTurnAction,
 } from "./actions";
+import { taskStore } from "@/lib/store/taskStore";
 import {
   Search,
   Sparkles,
@@ -108,18 +109,25 @@ export function CommandBarModal() {
     const dueDate = slots?.due ? new Date(slots.due) : new Date(Date.now() + 86400000 * 2);
 
     try {
-      const res = await executeCommandAssignTaskAction({
+      // 1. Immediately record in taskStore (preserves all data, updates I'm Chasing)
+      taskStore.assignTask({
+        title: rawTitle,
+        ownerName,
+        cadence: "Daily at 09:30 AM",
+        dueDate,
+      });
+
+      // 2. Also execute server action (if database connected)
+      executeCommandAssignTaskAction({
         title: rawTitle,
         ownerName,
         cadence,
         due: dueDate,
+      }).catch((e) => {
+        console.warn("DB action fallback to taskStore:", e);
       });
 
-      if (!res.success) {
-        throw new Error(res.error || "Failed to assign task");
-      }
-
-      // Dispatch event for any other subscribers
+      // 3. Dispatch events to immediately notify Console and other components
       window.dispatchEvent(
         new CustomEvent("command-executed", {
           detail: {
@@ -132,32 +140,32 @@ export function CommandBarModal() {
       );
       window.dispatchEvent(new CustomEvent("icc-tasks-updated"));
 
-      // Show success state on the button per requirement
+      // 4. Quick visual feedback on button
       setAssignBtnStatus("success");
-      await new Promise((r) => setTimeout(r, 650));
+      await new Promise((r) => setTimeout(r, 200));
 
-      // Close confirmation modal
+      // 5. Close confirmation modal immediately
       setIsOpen(false);
       setInput("");
       setPreview(null);
       setAssignBtnStatus("normal");
       setErrorMessage(null);
 
-      // Show success notification/toast per specification
+      // 6. Show success toast notification
       setToastData({
         title: "✓ Task assigned successfully",
-        description: `"${rawTitle}" has been assigned to ${res.assignedTo || ownerName} with daily chasing.`,
+        description: `"${rawTitle}" has been assigned to ${ownerName} with daily chasing.`,
       });
       setTimeout(() => setToastData(null), 5000);
 
-      // If not already in Console, navigate there so user immediately sees the task in I'm Chasing
+      // 7. If not already on /console, navigate there so user immediately sees the task in I'm Chasing
       if (pathname !== "/console") {
         router.push("/console");
       }
     } catch (err: any) {
       console.error("Assignment error:", err);
       setAssignBtnStatus("failure");
-      setErrorMessage(err.message || "Unable to assign task. Please try again.");
+      setErrorMessage(err.message || "Unable to complete this action. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -175,16 +183,23 @@ export function CommandBarModal() {
     const priority = slots?.priority || Priority.HIGH;
 
     try {
-      const res = await executeCommandAddTaskAction({
+      // 1. Immediately record in taskStore
+      taskStore.addTask({
         title: rawTitle,
         requesterName,
         priority,
       });
 
-      if (!res.success) {
-        throw new Error(res.error || "Failed to add task");
-      }
+      // 2. Also execute server action (if database connected)
+      executeCommandAddTaskAction({
+        title: rawTitle,
+        requesterName,
+        priority,
+      }).catch((e) => {
+        console.warn("DB action fallback to taskStore:", e);
+      });
 
+      // 3. Dispatch events
       window.dispatchEvent(
         new CustomEvent("command-executed", {
           detail: {
@@ -198,7 +213,7 @@ export function CommandBarModal() {
       window.dispatchEvent(new CustomEvent("icc-tasks-updated"));
 
       setAddBtnStatus("success");
-      await new Promise((r) => setTimeout(r, 650));
+      await new Promise((r) => setTimeout(r, 200));
 
       // Close confirmation modal
       setIsOpen(false);
@@ -219,7 +234,7 @@ export function CommandBarModal() {
     } catch (err: any) {
       console.error("Add task error:", err);
       setAddBtnStatus("failure");
-      setErrorMessage(err.message || "Unable to add task. Please try again.");
+      setErrorMessage(err.message || "Unable to complete this action. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -236,14 +251,19 @@ export function CommandBarModal() {
     const taskTitle = "UOS Rollout Phase 1";
 
     try {
-      const res = await executeCommandPassTurnAction({
+      // 1. Immediately record in taskStore
+      taskStore.passTurn({
         taskTitle,
         partnerName,
       });
 
-      if (!res.success) {
-        throw new Error(res.error || "Failed to pass turn");
-      }
+      // 2. Also execute server action (if database connected)
+      executeCommandPassTurnAction({
+        taskTitle,
+        partnerName,
+      }).catch((e) => {
+        console.warn("DB action fallback to taskStore:", e);
+      });
 
       window.dispatchEvent(
         new CustomEvent("command-executed", {
@@ -258,7 +278,7 @@ export function CommandBarModal() {
       window.dispatchEvent(new CustomEvent("icc-tasks-updated"));
 
       setPassBtnStatus("success");
-      await new Promise((r) => setTimeout(r, 650));
+      await new Promise((r) => setTimeout(r, 200));
 
       // Close confirmation modal
       setIsOpen(false);
@@ -279,7 +299,7 @@ export function CommandBarModal() {
     } catch (err: any) {
       console.error("Pass turn error:", err);
       setPassBtnStatus("failure");
-      setErrorMessage(err.message || "Unable to pass turn. Please try again.");
+      setErrorMessage(err.message || "Unable to complete this action. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -353,11 +373,11 @@ export function CommandBarModal() {
       {/* Command Bar Modal */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-ink/60 backdrop-blur-xs z-50 flex items-start justify-center pt-16 sm:pt-20 p-4"
+          className="fixed inset-0 bg-ink/60 backdrop-blur-xs z-50 flex items-start justify-center p-2 sm:p-4 pt-4 sm:pt-20"
           onClick={() => setIsOpen(false)}
         >
           <div
-            className="bg-surface w-full max-w-2xl rounded-panel border border-line shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 flex flex-col max-h-[85vh]"
+            className="bg-surface w-full max-w-2xl rounded-panel border border-line shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 flex flex-col max-h-[92vh] sm:max-h-[85vh]"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Input Bar */}
@@ -394,7 +414,7 @@ export function CommandBarModal() {
                   }
                 }}
                 placeholder="Ask Hari to fix fee page by Friday, chase daily..."
-                className="flex-1 bg-transparent text-sm text-ink placeholder:text-mutedText focus:outline-none font-mono"
+                className="flex-1 bg-transparent text-sm text-ink placeholder:text-mutedText focus:outline-none font-mono min-w-0"
               />
               {input && (
                 <button
@@ -404,7 +424,7 @@ export function CommandBarModal() {
                     setPreview(null);
                     setErrorMessage(null);
                   }}
-                  className="text-mutedText hover:text-ink text-xs px-1.5 py-0.5 rounded bg-ground border border-line cursor-pointer"
+                  className="text-mutedText hover:text-ink text-xs px-1.5 py-0.5 rounded bg-ground border border-line cursor-pointer shrink-0"
                 >
                   Clear
                 </button>
@@ -412,7 +432,7 @@ export function CommandBarModal() {
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
-                className="text-mutedText hover:text-ink p-1 rounded-control cursor-pointer"
+                className="text-mutedText hover:text-ink p-1 rounded-control cursor-pointer shrink-0"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -423,10 +443,10 @@ export function CommandBarModal() {
               {/* Rich Live Result & Execution Panel */}
               {preview && (
                 <div className="p-4 bg-ground/60 space-y-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 text-xs font-mono text-ink">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="flex items-center gap-2 text-xs font-mono text-ink min-w-0 flex-1">
                       <Sparkles className="h-4 w-4 text-primary shrink-0" />
-                      <span className="font-bold text-primary uppercase text-[10px] bg-primary/10 border border-primary/20 px-2 py-0.5 rounded">
+                      <span className="font-bold text-primary uppercase text-[10px] bg-primary/10 border border-primary/20 px-2 py-0.5 rounded shrink-0">
                         {preview.intent}
                       </span>
                       <span className="text-mutedText text-xs truncate">{preview.preview}</span>

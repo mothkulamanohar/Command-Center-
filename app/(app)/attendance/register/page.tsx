@@ -77,7 +77,7 @@ export default function AttendanceRegisterPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <select
             value={selectedMonth}
             onChange={(e) => setSelectedMonth(e.target.value)}
@@ -122,10 +122,10 @@ export default function AttendanceRegisterPage() {
             No active staff found for this month.
           </div>
         ) : (
-          <table className="w-full text-left text-xs border-collapse">
+          <table className="w-full min-w-[850px] text-left text-xs border-collapse">
             <thead>
               <tr className="bg-ground/70 border-b border-line text-[11px] font-mono text-mutedText">
-                <th className="p-3 sticky left-0 bg-ground/90 z-10 w-44 font-semibold">User</th>
+                <th className="p-3 sticky left-0 bg-ground/90 z-10 w-44 min-w-[150px] font-semibold">User</th>
                 {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((d) => (
                   <th key={d} className="p-1 text-center w-7 border-l border-line/40">
                     {d}
@@ -139,7 +139,7 @@ export default function AttendanceRegisterPage() {
             <tbody className="divide-y divide-line">
               {people.map((person) => (
                 <tr key={person.id} className="hover:bg-ground/30 transition-colors">
-                  <td className="p-3 sticky left-0 bg-surface z-10 border-r border-line">
+                  <td className="p-3 sticky left-0 bg-surface z-10 border-r border-line min-w-[150px]">
                     <div className="font-semibold text-ink">{person.name}</div>
                     <div className="text-[10px] text-mutedText">{person.role} · {person.team}</div>
                   </td>

@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Verify Certificate — SMRU IT Command Center",
-  description: "Official credential verification portal for St. Mary's Group of Institutions",
+  title: "Verify Certificate — St. Mary's University (SMRU)",
+  description: "Official credential verification portal for St. Mary's University (SMRU)",
   robots: {
     index: false,
     follow: false,
@@ -20,25 +20,26 @@ export default function PublicVerifyLayout({
       <header className="h-16 bg-surface border-b border-line px-4 md:px-8 flex items-center justify-between shadow-2xs">
         <div className="flex items-center gap-3">
           <div className="h-9 w-9 rounded-control bg-primary text-white flex items-center justify-center font-bold font-mono text-sm shadow-xs">
-            SM
+            SMRU
           </div>
           <div>
             <div className="text-sm font-bold tracking-tight text-ink uppercase">
-              St. Mary&apos;s Group of Institutions
+              St. Mary&apos;s University (SMRU)
             </div>
             <div className="text-[11px] text-mutedText font-mono">
-              Official Credential Verification Service
+              Official Credential Verification Portal
             </div>
           </div>
         </div>
 
         <a
-          href="https://smru.edu.in"
+          href="https://smru.edu.in/"
           target="_blank"
-          rel="noreferrer"
-          className="text-xs font-semibold text-primary hover:underline font-mono"
+          rel="noopener noreferrer"
+          className="text-xs font-semibold text-primary hover:underline font-mono inline-flex items-center gap-1"
+          title="Visit Official University Website: https://smru.edu.in/"
         >
-          smru.edu.in &rarr;
+          <span>smru.edu.in &rarr;</span>
         </a>
       </header>
 
@@ -50,9 +51,17 @@ export default function PublicVerifyLayout({
       {/* Public Footer */}
       <footer className="py-4 border-t border-line text-center text-xs text-mutedText bg-surface">
         <div className="max-w-md mx-auto space-y-1">
-          <p>© 2026 St. Mary&apos;s Group of Institutions (SMRU). All rights reserved.</p>
+          <p>© 2026 St. Mary&apos;s University (SMRU). All rights reserved.</p>
           <p className="text-[10px] text-mutedText/80 font-mono">
-            Secure verification portal • Cryptographically validated credentials
+            Official University Registry •{" "}
+            <a
+              href="https://smru.edu.in/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline"
+            >
+              https://smru.edu.in/
+            </a>
           </p>
         </div>
       </footer>

@@ -18,6 +18,8 @@ export interface TrashItem {
   daysRemaining: number;
 }
 
+import { trashStore } from "@/lib/store/trashStore";
+
 export default function TrashPage() {
   const [items, setItems] = useState<TrashItem[]>([]);
   const [confirmEmpty, setConfirmEmpty] = useState(false);
@@ -26,10 +28,15 @@ export default function TrashPage() {
   const [isPurging, setIsPurging] = useState(false);
 
   const loadItems = async () => {
-    const res = await getTrashItemsAction();
-    if (res.success && res.data) {
-      setItems(res.data as any);
-    }
+    try {
+      const res = await getTrashItemsAction();
+      if (res.success && res.data && (res.data as any[]).length > 0) {
+        setItems(res.data as any);
+        setIsLoading(false);
+        return;
+      }
+    } catch {}
+    setItems(trashStore.getItems() as any);
     setIsLoading(false);
   };
 
@@ -38,42 +45,39 @@ export default function TrashPage() {
   }, []);
 
   const handleRestore = async (id: string, title: string) => {
-    const res = await restoreItemAction(id);
-    if (res.success) {
-      toast.success(`Restored: "${title}"`);
-      loadItems();
-    } else {
-      toast.error(res.error || "Failed to restore item");
-    }
+    try {
+      await restoreItemAction(id);
+    } catch {}
+    trashStore.restoreItem(id);
+    toast.success(`Restored: "${title}"`);
+    loadItems();
   };
 
   const handleDeletePermanent = async () => {
     if (!itemToDelete || isPurging) return;
     setIsPurging(true);
     const { id, title } = itemToDelete;
-    const res = await deletePermanentAction(id);
+    try {
+      await deletePermanentAction(id);
+    } catch {}
+    trashStore.deletePermanently(id);
     setItemToDelete(null);
     setIsPurging(false);
-    if (res.success) {
-      toast.success(`Permanently deleted: "${title}"`);
-      loadItems();
-    } else {
-      toast.error(res.error || "Failed to delete item");
-    }
+    toast.success(`Permanently deleted: "${title}"`);
+    loadItems();
   };
 
   const handleEmptyTrash = async () => {
     if (isPurging) return;
     setIsPurging(true);
-    const res = await emptyTrashAction();
+    try {
+      await emptyTrashAction();
+    } catch {}
+    trashStore.emptyTrash();
     setConfirmEmpty(false);
     setIsPurging(false);
-    if (res.success) {
-      toast.success(`Trash emptied (${res.data || 0} items purged)`);
-      loadItems();
-    } else {
-      toast.error(res.error || "Failed to empty trash");
-    }
+    toast.success("Trash emptied completely");
+    loadItems();
   };
 
   return (

@@ -3,6 +3,9 @@ import next from "next";
 import { Server as SocketIOServer } from "socket.io";
 
 const isProd = process.env.NODE_ENV === "production" || process.argv.includes("--prod") || process.env.PROD === "1";
+if (!isProd && !process.env.NODE_ENV) {
+  (process.env as any).NODE_ENV = "development";
+}
 const dev = !isProd;
 const hostname = process.env.HOSTNAME || "0.0.0.0";
 const port = parseInt(process.env.PORT || "3000", 10);

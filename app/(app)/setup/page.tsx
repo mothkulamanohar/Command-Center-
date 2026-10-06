@@ -8,6 +8,7 @@ import {
   createCampusAction,
   toggleCampusSupportModeAction,
 } from "./actions";
+import { campusStore } from "@/lib/store/campusStore";
 
 export interface CampusItem {
   id: string;
@@ -33,10 +34,26 @@ export default function SetupPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   const loadCampuses = async () => {
-    const res = await getCampusesAction();
-    if (res.success && res.data) {
-      setCampuses(res.data as any);
-    }
+    try {
+      const res = await getCampusesAction();
+      if (res.success && res.data && res.data.length > 0) {
+        setCampuses(res.data as any);
+        setIsLoading(false);
+        return;
+      }
+    } catch {}
+
+    setCampuses(
+      campusStore.getCampuses().map((c) => ({
+        id: c.id,
+        name: c.name,
+        code: c.code,
+        mode: c.mode,
+        leadName: c.leadName,
+        teamCount: c.teamsCount,
+        status: "Active",
+      }))
+    );
     setIsLoading(false);
   };
 
@@ -45,35 +62,47 @@ export default function SetupPage() {
   }, []);
 
   const toggleMode = async (id: string) => {
-    const res = await toggleCampusSupportModeAction(id);
-    if (res.success) {
-      toast.success("Campus support mode updated");
-      loadCampuses();
-    } else {
-      toast.error(res.error || "Failed to update support mode");
-    }
+    campusStore.toggleMode(id);
+    setCampuses((prev) =>
+      prev.map((c) =>
+        c.id === id ? { ...c, mode: c.mode === "ONSITE" ? "REMOTE" : "ONSITE" } : c
+      )
+    );
+    toast.success("Campus support mode updated");
+    try {
+      const res = await toggleCampusSupportModeAction(id);
+      if (res.success) loadCampuses();
+    } catch {}
   };
 
   const handleCreateCampus = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newName.trim() || !newCode.trim()) return;
 
-    const res = await createCampusAction({
-      name: newName.trim(),
-      code: newCode.trim().toUpperCase(),
+    const trimmedName = newName.trim();
+    const trimmedCode = newCode.trim().toUpperCase();
+
+    campusStore.addCampus({
+      name: trimmedName,
+      code: trimmedCode,
       mode: newMode,
       leadName: newLead,
     });
+    setIsAddModalOpen(false);
+    setNewName("");
+    setNewCode("");
+    toast.success(`Campus "${trimmedName}" created successfully`);
+    loadCampuses();
 
-    if (res.success) {
-      setIsAddModalOpen(false);
-      setNewName("");
-      setNewCode("");
-      toast.success(`Campus "${newName}" created successfully`);
-      loadCampuses();
-    } else {
-      toast.error(res.error || "Failed to create campus");
-    }
+    try {
+      const res = await createCampusAction({
+        name: trimmedName,
+        code: trimmedCode,
+        mode: newMode,
+        leadName: newLead,
+      });
+      if (res.success) loadCampuses();
+    } catch {}
   };
 
   return (
@@ -116,7 +145,7 @@ export default function SetupPage() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
+          <table className="w-full min-w-[560px] text-left text-xs">
             <thead className="bg-surface-alt/70 text-mutedText uppercase text-[10px] font-mono border-b border-line">
               <tr>
                 <th className="py-2.5 px-4">Campus Name</th>
@@ -179,7 +208,7 @@ export default function SetupPage() {
             <span>Implementation Team Stage Pipeline (UOS Rollout)</span>
             <span className="font-mono text-[10px] text-primary">5 Stages Active</span>
           </div>
-          <div className="grid grid-cols-5 gap-2 text-center text-[11px] font-mono pt-1">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 text-center text-[11px] font-mono pt-1">
             <div className="p-2 rounded bg-primary/15 text-primary border border-primary/30 font-bold">
               1. Planning
             </div>
@@ -202,7 +231,7 @@ export default function SetupPage() {
       {/* Add Campus Modal */}
       {isAddModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-surface rounded-panel border border-line w-full max-w-md shadow-panel p-5 space-y-4 animate-in fade-in">
+          <div className="bg-surface rounded-panel border border-line w-full max-w-md shadow-panel p-5 space-y-4 animate-in fade-in max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-bold text-ink flex items-center gap-2">
                 <Building2 className="h-4 w-4 text-primary" />

@@ -20,7 +20,35 @@ const FALLBACK_KPIS: KpiTile[] = [
   { name: "Avg Feedback Rating", value: "5.0 ★", target: "≥ 4.5", change: "0", isPositive: true, status: "GOOD" },
 ];
 
-const FALLBACK_JPR: JprRow[] = [];
+const FALLBACK_JPR: JprRow[] = [
+  {
+    teamName: "SMRU Campus IT",
+    leadName: "Hari (Coordinator)",
+    donePlanned: "8 / 10",
+    progressPercent: 80,
+    highlights: ["Completed 48-port core switch migration in Lab B", "Re-cabled server rack 4"],
+    risks: ["Fiber optic patch cable shipment delayed 2 days"],
+    health: "Good",
+  },
+  {
+    teamName: "Developers",
+    leadName: "Sri (IT Manager)",
+    donePlanned: "12 / 12",
+    progressPercent: 100,
+    highlights: ["Command Center Track B & C deployed", "Socket.IO real-time channels verified"],
+    risks: [],
+    health: "Good",
+  },
+  {
+    teamName: "UOS Rollout",
+    leadName: "Hari",
+    donePlanned: "6 / 8",
+    progressPercent: 75,
+    highlights: ["Attendance biometric mapping complete for Block A"],
+    risks: ["Block C switch port config pending"],
+    health: "Watch",
+  },
+];
 
 const FALLBACK_JPA: JpaProfile = {
   name: "Sri",

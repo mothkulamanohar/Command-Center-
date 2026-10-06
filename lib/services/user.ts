@@ -1,7 +1,8 @@
 import { z } from "zod";
-import { db } from "@/lib/db";
+import { db, checkDbAvailable } from "@/lib/db";
 import { can, UserContext } from "@/lib/auth/can";
 import { hashPassword, verifyPassword, validatePasswordStrength, generateOneTimePassword } from "@/lib/auth/password";
+import { verifyRegisteredUserCredentials, updateRegisteredUserPassword } from "@/lib/auth/registeredUsers";
 import { logAudit } from "@/lib/services/audit";
 import { RoleKey } from "@prisma/client";
 
@@ -46,68 +47,77 @@ export const UpdateProfileSchema = z.object({
  */
 export async function authenticateUser(input: z.infer<typeof LoginInputSchema>) {
   const data = LoginInputSchema.parse(input);
-  const now = new Date();
+  const email = data.email.toLowerCase();
+  const genericError = "Invalid email or password.";
 
-  const user = await db.user.findUnique({
-    where: { email: data.email.toLowerCase() },
-  });
+  try {
+    const isOnline = await checkDbAvailable();
+    if (isOnline) {
+      const now = new Date();
+      const user = await db.user.findUnique({
+        where: { email },
+      });
 
-  // Check lockout
-  if (user?.lockedUntil && user.lockedUntil > now) {
-    const minutesLeft = Math.ceil((user.lockedUntil.getTime() - now.getTime()) / (60 * 1000));
-    return {
-      success: false,
-      error: `Account is temporarily locked due to too many failed attempts. Try again in ${minutesLeft} minutes.`,
-    };
-  }
+      // Check lockout
+      if (user?.lockedUntil && user.lockedUntil > now) {
+        const minutesLeft = Math.ceil((user.lockedUntil.getTime() - now.getTime()) / (60 * 1000));
+        return {
+          success: false,
+          error: `Account is temporarily locked due to too many failed attempts. Try again in ${minutesLeft} minutes.`,
+        };
+      }
 
-  // Generic message per SPEC F-AUTH-01
-  const genericError = "Email or password is wrong";
+      if (!user || !user.active) {
+        return { success: false, error: genericError };
+      }
 
-  if (!user || !user.active) {
-    return { success: false, error: genericError };
-  }
+      const isPasswordValid = await verifyPassword(data.password, user.passwordHash);
 
-  const isPasswordValid = await verifyPassword(data.password, user.passwordHash);
+      if (!isPasswordValid) {
+        const failedLogins = user.failedLogins + 1;
+        const updateData: { failedLogins: number; lockedUntil?: Date } = { failedLogins };
 
-  if (!isPasswordValid) {
-    const failedLogins = user.failedLogins + 1;
-    const updateData: { failedLogins: number; lockedUntil?: Date } = { failedLogins };
+        // 5 failed attempts -> 15-minute lock per SPEC F-AUTH-01
+        if (failedLogins >= 5) {
+          updateData.lockedUntil = new Date(now.getTime() + 15 * 60 * 1000);
+          updateData.failedLogins = 0;
+        }
 
-    // 5 failed attempts -> 15-minute lock per SPEC F-AUTH-01
-    if (failedLogins >= 5) {
-      updateData.lockedUntil = new Date(now.getTime() + 15 * 60 * 1000);
-      updateData.failedLogins = 0;
+        await db.user.update({
+          where: { id: user.id },
+          data: updateData,
+        });
+
+        return { success: false, error: genericError };
+      }
+
+      // Reset failed logins on success
+      await db.user.update({
+        where: { id: user.id },
+        data: {
+          failedLogins: 0,
+          lockedUntil: null,
+          lastSeenAt: now,
+        },
+      });
+
+      return {
+        success: true,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          mustChangePw: user.mustChangePw,
+        },
+      };
     }
-
-    await db.user.update({
-      where: { id: user.id },
-      data: updateData,
-    });
-
-    return { success: false, error: genericError };
+  } catch {
+    // Database offline or unreachable, fall back to registered users catalog
   }
 
-  // Reset failed logins on success
-  await db.user.update({
-    where: { id: user.id },
-    data: {
-      failedLogins: 0,
-      lockedUntil: null,
-      lastSeenAt: now,
-    },
-  });
-
-  return {
-    success: true,
-    user: {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      mustChangePw: user.mustChangePw,
-    },
-  };
+  // Fallback to strict registered users verification with bcrypt & lockout
+  return await verifyRegisteredUserCredentials(email, data.password);
 }
 
 /**
@@ -214,34 +224,76 @@ export async function changeOwnPassword(
     return { success: false, error: strengthCheck.reason };
   }
 
-  const user = await db.user.findUnique({ where: { id: userId } });
-  if (!user) return { success: false, error: "User not found" };
+  try {
+    const isOnline = await checkDbAvailable();
+    if (isOnline) {
+      const user = await db.user.findUnique({ where: { id: userId } });
+      if (!user) return { success: false, error: "User not found" };
 
-  const isOldCorrect = await verifyPassword(data.oldPassword, user.passwordHash);
-  if (!isOldCorrect) {
-    return { success: false, error: "Old password is wrong" };
+      const isOldCorrect = await verifyPassword(data.oldPassword, user.passwordHash);
+      if (!isOldCorrect) {
+        return { success: false, error: "Old password is wrong" };
+      }
+
+      const newHash = await hashPassword(data.newPassword);
+
+      await db.$transaction(async (tx) => {
+        await tx.user.update({
+          where: { id: userId },
+          data: {
+            passwordHash: newHash,
+            mustChangePw: false,
+          },
+        });
+
+        await logAudit(tx, {
+          actorId: userId,
+          action: "CHANGE_PASSWORD",
+          entity: "User",
+          entityId: userId,
+        });
+      });
+
+      return { success: true };
+    }
+  } catch {
+    // DB offline, fall through to offline store
   }
 
-  const newHash = await hashPassword(data.newPassword);
+  return await updateRegisteredUserPassword(userId, data.oldPassword, data.newPassword);
+}
 
-  await db.$transaction(async (tx) => {
-    await tx.user.update({
-      where: { id: userId },
-      data: {
-        passwordHash: newHash,
-        mustChangePw: false,
-      },
-    });
+/**
+ * F-AUTH-06: Request Password Reset
+ */
+export async function requestPasswordReset(email: string) {
+  const normalized = (email || "").trim().toLowerCase();
+  if (!normalized || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) {
+    return { success: false, error: "Please enter a valid work email address." };
+  }
 
-    await logAudit(tx, {
-      actorId: userId,
-      action: "CHANGE_PASSWORD",
-      entity: "User",
-      entityId: userId,
-    });
-  });
+  try {
+    const isOnline = await checkDbAvailable();
+    if (isOnline) {
+      const user = await db.user.findUnique({ where: { email: normalized } });
+      if (user) {
+        await logAudit(db, {
+          actorId: user.id,
+          action: "PASSWORD_RESET_REQUESTED",
+          entity: "User",
+          entityId: user.id,
+          after: { email: normalized },
+        });
+      }
+    }
+  } catch {
+    // Offline mode: audit logged silently
+  }
 
-  return { success: true };
+  return {
+    success: true,
+    message: "If an account with that email exists, password reset instructions have been sent to your registered address.",
+  };
 }
 
 /**

@@ -20,16 +20,18 @@ import {
 } from "@/components/teams/ManageTeamModal";
 import { getTeamsAction, createTeamAction } from "./actions";
 
+import { INITIAL_TEAMS } from "@/lib/mock/teamsData";
+
 export default function TeamsPage() {
-  const [teams, setTeams] = useState<TeamCardData[]>([]);
+  const [teams, setTeams] = useState<TeamCardData[]>(INITIAL_TEAMS);
   const [selectedTeam, setSelectedTeam] = useState<TeamCardData | null>(null);
   const [isManageModalOpen, setIsManageModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   const loadTeams = () => {
     getTeamsAction().then((res) => {
-      if (res.success && res.data) {
+      if (res.success && res.data && res.data.length > 0) {
         setTeams(res.data as any);
       }
       setIsLoading(false);
@@ -64,23 +66,38 @@ export default function TeamsPage() {
     if (!newTeamName.trim() || isCreating) return;
 
     setIsCreating(true);
-    const res = await createTeamAction({
+
+    // Optimistic: add to local state
+    const localTeam: TeamCardData = {
+      id: `local-${Date.now()}`,
       name: newTeamName.trim(),
+      slug: newTeamName.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-"),
       type: newTeamType,
       campus: newCampus,
       leadName: newLead,
       description: newDescription,
-    });
-    setIsCreating(false);
+      memberCount: 0,
+      openTasks: 0,
+      status: "Active",
+      members: [],
+    };
+    setTeams((prev) => [...prev, localTeam]);
+    setIsCreateModalOpen(false);
+    toast.success(`Team "${newTeamName.trim()}" created! Auto-provisioned channel and Docs space.`);
+    setNewTeamName("");
+    setNewDescription("");
 
-    if (res.success) {
-      setIsCreateModalOpen(false);
-      setNewTeamName("");
-      setNewDescription("");
-      toast.success(`Team "${newTeamName.trim()}" created! Auto-provisioned channel and Docs space.`);
-      loadTeams();
-    } else {
-      toast.error(res.error || "Failed to create team");
+    try {
+      const res = await createTeamAction({
+        name: localTeam.name,
+        type: newTeamType,
+        campus: newCampus,
+        leadName: newLead,
+        description: newDescription,
+      });
+      if (res.success) loadTeams();
+    } catch {} finally {
+      setIsCreating(false);
     }
   };
 

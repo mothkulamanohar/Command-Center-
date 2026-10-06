@@ -48,7 +48,7 @@ export function SitesRegistryTable({ sites, onPing }: SitesRegistryTableProps) {
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-xs">
+        <table className="w-full min-w-[580px] text-left text-xs">
           <thead className="bg-surface-alt/70 text-mutedText uppercase text-[10px] font-mono border-b border-line">
             <tr>
               <th className="py-2.5 px-4">Domain</th>

@@ -1,8 +1,9 @@
 "use server";
 
-import { getSessionUser } from "@/lib/auth/session";
+import { getSessionUser, destroySession } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { formatNotificationTime } from "@/lib/time";
 
 export async function stopRunningTimerAction(timeLogId: string) {
   const user = await getSessionUser();
@@ -63,12 +64,7 @@ export async function getHeaderNotificationsAction() {
       data: notifications.map((n) => ({
         id: n.id,
         title: n.title,
-        time: n.createdAt.toLocaleDateString("en-IN", {
-          day: "numeric",
-          month: "short",
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
+        time: formatNotificationTime(n.createdAt),
         timestamp: n.createdAt.getTime(),
         read: Boolean(n.readAt),
         type: n.type as any,
@@ -109,5 +105,10 @@ export async function markSingleNotificationReadAction(notificationId: string) {
   } catch (err: any) {
     return { success: false, error: err.message || "Failed to mark notification read" };
   }
+}
+
+export async function logoutAction() {
+  await destroySession();
+  return { success: true };
 }
 

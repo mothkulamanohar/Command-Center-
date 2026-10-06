@@ -48,9 +48,10 @@ export function MonthGrid({ currentDate, items, onSelectDate, selectedDate }: Mo
   }, [items]);
 
   return (
-    <div className="bg-surface rounded-panel border border-line shadow-xs overflow-hidden">
-      {/* Weekday headers */}
-      <div className="grid grid-cols-[36px_repeat(7,1fr)] bg-ground border-b border-line text-center text-[10px] font-mono font-semibold text-mutedText py-2">
+    <div className="bg-surface rounded-panel border border-line shadow-xs overflow-x-auto">
+      <div className="min-w-[540px]">
+        {/* Weekday headers */}
+        <div className="grid grid-cols-[36px_repeat(7,1fr)] bg-ground border-b border-line text-center text-[10px] font-mono font-semibold text-mutedText py-2">
         <span className="text-mutedText/60">W#</span>
         <span>Mon</span>
         <span>Tue</span>
@@ -140,6 +141,7 @@ export function MonthGrid({ currentDate, items, onSelectDate, selectedDate }: Mo
             </div>
           );
         })}
+        </div>
       </div>
     </div>
   );

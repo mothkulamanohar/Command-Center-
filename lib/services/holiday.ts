@@ -10,20 +10,45 @@ export const HolidaySchema = z.object({
   campusIds: z.array(z.string()).default([]),
 });
 
+import { getFestivalsForYear } from "./festivalData";
+
 export async function getHolidays(year = new Date().getFullYear(), campusId?: string) {
   const yearStart = startOfYear(new Date(year, 0, 1));
   const yearEnd = endOfYear(new Date(year, 11, 31));
 
-  const all = await db.holiday.findMany({
-    where: {
-      date: { gte: yearStart, lte: yearEnd },
-    },
-    orderBy: { date: "asc" },
-  });
+  let dbHolidays: any[] = [];
+  try {
+    dbHolidays = await db.holiday.findMany({
+      where: {
+        date: { gte: yearStart, lte: yearEnd },
+      },
+      orderBy: { date: "asc" },
+    });
+  } catch {
+    // Database offline fallback
+    dbHolidays = [];
+  }
 
-  if (!campusId) return all;
+  const festivals = getFestivalsForYear(year).map((f) => ({
+    id: `hol-${f.date}-${f.name.toLowerCase().replace(/[^a-z0-9]/g, "-")}`,
+    date: new Date(`${f.date}T00:00:00.000Z`),
+    name: f.name,
+    type: f.type,
+    campusIds: [] as string[],
+  }));
 
-  return all.filter((h) => h.campusIds.length === 0 || h.campusIds.includes(campusId));
+  const existingDatesAndNames = new Set(
+    dbHolidays.map((h) => `${format(h.date, "yyyy-MM-dd")}_${h.name.toLowerCase().trim()}`)
+  );
+
+  const merged = [
+    ...dbHolidays,
+    ...festivals.filter((f) => !existingDatesAndNames.has(`${f.date.toISOString().split("T")[0]}_${f.name.toLowerCase().trim()}`)),
+  ].sort((a, b) => a.date.getTime() - b.date.getTime());
+
+  if (!campusId) return merged;
+
+  return merged.filter((h) => !h.campusIds || h.campusIds.length === 0 || h.campusIds.includes(campusId));
 }
 
 export async function createHoliday(actor: UserContext, input: z.input<typeof HolidaySchema>) {

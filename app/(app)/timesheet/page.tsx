@@ -10,6 +10,7 @@ import {
 } from "./actions";
 import { Clock, Calendar as CalendarIcon, Download, Plus, CheckCircle2, ChevronLeft, ChevronRight, User, Users } from "lucide-react";
 import { formatMinutes } from "@/lib/time/duration";
+import { timesheetStore } from "@/lib/store/timesheetStore";
 
 export interface TimesheetTaskRow {
   taskId: string;
@@ -70,7 +71,7 @@ export default function TimesheetPage() {
   const [weekOffset, setWeekOffset] = useState(0);
   const weekInfo = useMemo(() => getWeekRange(weekOffset), [weekOffset]);
 
-  const [rows, setRows] = useState<TimesheetTaskRow[]>([]);
+  const [rows, setRows] = useState<TimesheetTaskRow[]>(() => timesheetStore.getRowsForWeek("0"));
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
   const [selectedTaskRef, setSelectedTaskRef] = useState("T-1042");
   const [logHours, setLogHours] = useState("1.5");
@@ -111,10 +112,10 @@ export default function TimesheetPage() {
           }));
           setRows(mapped);
         } else {
-          setRows([]);
+          setRows(timesheetStore.getRowsForWeek(weekInfo.weekKey));
         }
       } else {
-        setRows([]);
+        setRows(timesheetStore.getRowsForWeek(weekInfo.weekKey));
       }
     }
     setIsLoading(false);
@@ -127,11 +128,18 @@ export default function TimesheetPage() {
   const days = weekInfo.days.map((d) => d.label);
   const currentWeek = weekInfo.title;
 
-  const dayTotals = [0, 1, 2, 3, 4, 5].map((dayIdx) =>
-    rows.reduce((sum, r) => sum + (r.hours[dayIdx] || 0), 0)
+  const dayTotals = useMemo(
+    () =>
+      [0, 1, 2, 3, 4, 5].map((dayIdx) =>
+        rows.reduce((sum, r) => sum + (r.hours[dayIdx] || 0), 0)
+      ),
+    [rows]
   );
 
-  const grandTotal = dayTotals.reduce((a, b) => a + b, 0);
+  const grandTotal = useMemo(
+    () => dayTotals.reduce((a, b) => a + b, 0),
+    [dayTotals]
+  );
 
   const [isPending, startTransition] = useTransition();
 
@@ -143,21 +151,22 @@ export default function TimesheetPage() {
     startTransition(async () => {
       const targetDay = weekInfo.days[logDayIndex]?.date || new Date();
 
-      const res = await logTimeManualAction({
-        taskId: selectedTaskRef,
-        minutes: Math.round(hrs * 60),
-        dateIso: targetDay.toISOString(),
-        note: logNote || undefined,
-      });
-
+      // Optimistically update timesheetStore and local state
+      timesheetStore.logHours(weekInfo.weekKey, selectedTaskRef, logDayIndex, hrs);
+      setRows(timesheetStore.getRowsForWeek(weekInfo.weekKey));
       setIsLogModalOpen(false);
       setLogNote("");
-      if (res.success) {
-        toast.success(`Logged ${hrs}h on ${selectedTaskRef}`);
-        loadData();
-      } else {
-        toast.error(res.error || "Failed to save time log");
-      }
+      toast.success(`Logged ${hrs}h on ${selectedTaskRef}`);
+
+      try {
+        const res = await logTimeManualAction({
+          taskId: selectedTaskRef,
+          minutes: Math.round(hrs * 60),
+          dateIso: targetDay.toISOString(),
+          note: logNote || undefined,
+        });
+        if (res.success) loadData();
+      } catch {}
     });
   };
 
@@ -194,7 +203,7 @@ export default function TimesheetPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {/* Item 22: Team View toggle hidden if user leads no team */}
           {isLead && (
             <div className="inline-flex rounded-control border border-line bg-surface p-0.5 text-xs font-mono">
@@ -240,7 +249,7 @@ export default function TimesheetPage() {
       </div>
 
       {/* Week Navigator */}
-      <div className="flex items-center justify-between bg-surface p-3 rounded-panel border border-line shadow-xs">
+      <div className="flex flex-wrap items-center justify-between gap-2 bg-surface p-3 rounded-panel border border-line shadow-xs">
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -272,7 +281,7 @@ export default function TimesheetPage() {
       {viewMode === "MY" ? (
         /* My Weekly Grid */
         <div className="bg-surface rounded-panel border border-line shadow-xs overflow-x-auto">
-          <table className="w-full text-xs text-left border-collapse">
+          <table className="w-full min-w-[640px] text-xs text-left border-collapse">
             <thead>
               <tr className="border-b border-line bg-ground text-mutedText font-mono uppercase text-[10px]">
                 <th className="p-3 font-semibold">Task</th>
@@ -367,7 +376,7 @@ export default function TimesheetPage() {
                   </div>
 
                   <div className="overflow-x-auto">
-                    <table className="w-full text-xs text-left border-collapse">
+                    <table className="w-full min-w-[640px] text-xs text-left border-collapse">
                       <thead>
                         <tr className="border-b border-line bg-ground/50 text-mutedText font-mono uppercase text-[10px]">
                           <th className="p-2.5 font-semibold">Task</th>

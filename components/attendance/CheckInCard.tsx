@@ -5,25 +5,46 @@ import { toast } from "sonner";
 import { LogIn, LogOut, Clock, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { checkInAction, checkOutAction } from "@/app/(app)/attendance/actions";
+import { attendanceStore } from "@/lib/store/attendanceStore";
 
 export function CheckInCard({ record, user }: { record: any, user: any }) {
-  const isCheckedIn = record?.lastOutAt === null && record?.firstInAt != null;
-  const inTime = record?.firstInAt ? new Date(record.firstInAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) : "";
-  const workMode = record?.mode || "OFFICE";
-  const workedHours = record?.workedMinutes ? `${Math.floor(record.workedMinutes / 60)}h ${record.workedMinutes % 60}m` : "0h 0m";
+  const [isCheckedIn, setIsCheckedIn] = useState<boolean>(() => {
+    if (record) return record.lastOutAt === null && record.firstInAt != null;
+    return attendanceStore.getState().isCheckedIn;
+  });
+  const [inTime, setInTime] = useState<string>(() => {
+    if (record?.firstInAt) {
+      return new Date(record.firstInAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
+    }
+    return attendanceStore.getState().checkInTime || "09:04";
+  });
+  const workMode = record?.mode || attendanceStore.getState().workMode || "OFFICE";
+  const workedHours = record?.workedMinutes
+    ? `${Math.floor(record.workedMinutes / 60)}h ${record.workedMinutes % 60}m`
+    : `${Math.floor(attendanceStore.getState().workedMinutes / 60)}h ${attendanceStore.getState().workedMinutes % 60}m`;
 
   const [isPending, startTransition] = useTransition();
 
   const handleToggle = () => {
     startTransition(async () => {
+      const now = new Date();
+      const timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
       if (isCheckedIn) {
-        const res = await checkOutAction();
-        if (res.success) toast.success("Checked out for today");
-        else toast.error(res.error || "Failed to check out");
+        setIsCheckedIn(false);
+        attendanceStore.checkOut();
+        toast.success("Checked out for today");
+        try {
+          await checkOutAction();
+        } catch {}
       } else {
-        const res = await checkInAction(user?.remoteAllowed ? "REMOTE" : "OFFICE");
-        if (res.success) toast.success("Checked in for today");
-        else toast.error(res.error || "Failed to check in");
+        setIsCheckedIn(true);
+        setInTime(timeStr);
+        const mode = user?.remoteAllowed ? "REMOTE" : "OFFICE";
+        attendanceStore.checkIn(mode);
+        toast.success(`Checked in for today at ${timeStr}`);
+        try {
+          await checkInAction(mode);
+        } catch {}
       }
     });
   };

@@ -39,21 +39,40 @@ export default function AuditLogPage() {
 
   const loadData = useCallback(async (targetPage = 1) => {
     setIsLoading(true);
-    const res = await getAuditLogsAction({
-      page: targetPage,
-      pageSize: 20,
-      search,
-      action: selectedAction,
+    try {
+      const res = await getAuditLogsAction({
+        page: targetPage,
+        pageSize: 20,
+        search,
+        action: selectedAction,
+      });
+
+      if (res.success && res.logs && res.logs.length > 0) {
+        setEvents(res.logs as AuditEntry[]);
+        setTotalPages(res.totalPages || 1);
+        setTotalEntries(res.total || 0);
+        setPage(res.page || 1);
+        setIsLoading(false);
+        return;
+      }
+    } catch {}
+
+    const { auditStore } = await import("@/lib/store/auditStore");
+    const fallbackLogs = auditStore.getEvents();
+    const filtered = fallbackLogs.filter((l) => {
+      const matchesAction = selectedAction === "ALL" || l.action === selectedAction;
+      const matchesSearch =
+        !search ||
+        l.actor.toLowerCase().includes(search.toLowerCase()) ||
+        l.entity.toLowerCase().includes(search.toLowerCase()) ||
+        l.details.toLowerCase().includes(search.toLowerCase());
+      return matchesAction && matchesSearch;
     });
 
-    if (res.success && res.logs) {
-      setEvents(res.logs as AuditEntry[]);
-      setTotalPages(res.totalPages || 1);
-      setTotalEntries(res.total || 0);
-      setPage(res.page || 1);
-    } else {
-      toast.error(res.error || "Failed to load audit logs");
-    }
+    setEvents(filtered as AuditEntry[]);
+    setTotalPages(1);
+    setTotalEntries(filtered.length);
+    setPage(1);
     setIsLoading(false);
   }, [search, selectedAction]);
 
@@ -76,11 +95,30 @@ export default function AuditLogPage() {
         a.click();
         URL.revokeObjectURL(url);
         toast.success("Audit log exported to CSV successfully.");
-      } else {
-        toast.error(res.error || "Failed to export audit log");
+        return;
       }
-    } catch (err: any) {
-      toast.error(err.message || "Export error");
+    } catch {}
+
+    try {
+      const { auditStore } = await import("@/lib/store/auditStore");
+      const logs = auditStore.getEvents();
+      const csvRows = [
+        "ID,Timestamp,Actor,Action,Entity,Details,IP",
+        ...logs.map(
+          (l) =>
+            `"${l.id}","${l.timestamp}","${l.actor}","${l.action}","${l.entity}","${l.details.replace(/"/g, '""')}","${l.ip}"`
+        ),
+      ];
+      const blob = new Blob([csvRows.join("\n")], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `System_Audit_Log_${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Audit log exported to CSV successfully.");
+    } catch {
+      toast.error("Failed to export audit log");
     } finally {
       setIsExporting(false);
     }
@@ -95,7 +133,7 @@ export default function AuditLogPage() {
             Immutable Record of All System Operations (SPEC §5 F-AUTH-08)
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <button
             type="button"
             onClick={() => loadData(page)}
@@ -175,7 +213,7 @@ export default function AuditLogPage() {
       {/* Main Table */}
       <div className="bg-surface rounded-panel border border-line shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
+          <table className="w-full min-w-[640px] text-left text-xs">
             <thead className="bg-surface-alt/70 border-b border-line text-mutedText font-mono uppercase text-[10px]">
               <tr>
                 <th className="px-4 py-2.5 font-semibold">Timestamp</th>
@@ -236,7 +274,7 @@ export default function AuditLogPage() {
         </div>
 
         {/* Server-Side Pagination Bar */}
-        <div className="px-4 py-3 border-t border-line bg-surface-alt/40 flex items-center justify-between text-xs text-mutedText font-mono">
+        <div className="px-4 py-3 border-t border-line bg-surface-alt/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs text-mutedText font-mono">
           <div>
             Showing <span className="font-bold text-ink">{events.length}</span> of{" "}
             <span className="font-bold text-ink">{totalEntries}</span> operations

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, use } from "react";
+import { useState, useEffect, use } from "react";
 import { toast } from "sonner";
-import { Download, Copy, ExternalLink, ArrowLeft, ShieldAlert, CheckCircle2, Printer, Globe } from "lucide-react";
+import { Download, Copy, ExternalLink, ArrowLeft, ShieldAlert, ShieldCheck, CheckCircle2, Printer, Globe } from "lucide-react";
 import Link from "next/link";
 import { AchievementCertificate } from "@/components/certificates/AchievementCertificate";
 
@@ -17,7 +17,7 @@ export default function CertificateDetailPage({ params }: CertificateDetailProps
   const [state, setState] = useState<"ISSUED" | "REVOKED">("ISSUED");
   const [revokeReason, setRevokeReason] = useState("");
   const [isRevokeModalOpen, setIsRevokeModalOpen] = useState(false);
-  const certData = {
+  const [certData, setCertData] = useState({
     number: "ICC-ACH-2026-0001",
     code: "K7Q2M9XA4D",
     recipientName: "Sri Ram",
@@ -33,10 +33,42 @@ export default function CertificateDetailPage({ params }: CertificateDetailProps
     signatoryTitle: "System Administrator",
     signatorySubtitle: "Command Center",
     tagline: "Better Monitoring for a Smoother Tomorrow",
-    collegeName: "St. Mary's Group of Institutions",
-    collegeUrl: "https://smru.edu.in",
-    verifyUrl: "/verify/K7Q2M9XA4D",
-  };
+    collegeName: "St. Mary's University (SMRU)",
+    collegeUrl: "https://smru.edu.in/",
+    verifyUrl: "/verify/ICC-ACH-2026-0001",
+  });
+
+  // Dynamically load certificate if id is not default cert-1
+  useEffect(() => {
+    if (certId && certId !== "cert-1") {
+      import("../actions").then(({ verifyCertificateAction }) => {
+        verifyCertificateAction(certId).then((res) => {
+          if (res.success && res.data && (res.data as any).found) {
+            const c = res.data as any;
+            setCertData((prev) => ({
+              ...prev,
+              number: c.number || prev.number,
+              code: c.code || prev.code,
+              recipientName: c.recipientName || prev.recipientName,
+              title: c.title || prev.title,
+              trainingName: c.trainingName || c.title || prev.trainingName,
+              attendancePercent: c.attendancePercent || prev.attendancePercent,
+              presentDays: c.presentDays ?? prev.presentDays,
+              lateArrivals: c.lateArrivals ?? prev.lateArrivals,
+              halfDays: c.halfDays ?? prev.halfDays,
+              avgInTime: c.avgInTime || prev.avgInTime,
+              totalHours: c.totalHours || prev.totalHours,
+              awardedDate: c.issuedAt || prev.awardedDate,
+              verifyUrl: `/verify/${c.number || c.code}`,
+            }));
+            if (c.status === "REVOKED") {
+              setState("REVOKED");
+            }
+          }
+        });
+      });
+    }
+  }, [certId]);
 
   const fallbackCopyText = (text: string) => {
     try {
@@ -55,7 +87,9 @@ export default function CertificateDetailPage({ params }: CertificateDetailProps
   };
 
   const handleCopyLink = () => {
-    const url = typeof window !== "undefined" ? `${window.location.origin}/verify/${certData.code}` : `/verify/${certData.code}`;
+    const url = typeof window !== "undefined"
+      ? `${window.location.origin}/verify/${certData.number}`
+      : `/verify/${certData.number}`;
     if (navigator?.clipboard?.writeText) {
       navigator.clipboard.writeText(url).then(
         () => toast.success("Verification URL copied to clipboard"),
@@ -79,9 +113,7 @@ export default function CertificateDetailPage({ params }: CertificateDetailProps
   };
 
   return (
-    <div className="space-y-4 max-w-5xl mx-auto pb-8">
-      
-
+    <div className="space-y-4 max-w-5xl mx-auto pb-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center gap-3">
@@ -110,8 +142,21 @@ export default function CertificateDetailPage({ params }: CertificateDetailProps
             title="Open College Web Application"
           >
             <Globe className="h-3.5 w-3.5 text-blue-600" />
-            <span>College Portal</span>
+            <span>SMRU Portal</span>
             <ExternalLink className="h-3 w-3 text-blue-600" />
+          </a>
+
+          {/* Direct Verify Certificate Button */}
+          <a
+            href={`/verify/${certData.number}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-control text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
+            title="Open Public Certificate Verification Page"
+          >
+            <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+            <span>Verify Certificate</span>
+            <ExternalLink className="h-3 w-3 text-emerald-600" />
           </a>
 
           <button
@@ -191,16 +236,17 @@ export default function CertificateDetailPage({ params }: CertificateDetailProps
       <div className="bg-surface rounded-panel border border-line p-3.5 text-xs flex flex-col sm:flex-row items-center justify-between gap-3 text-mutedText shadow-xs">
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
-            <span className="inline-block w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+            <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
             <span>
               Public Verification:{" "}
               <a
-                href={`/verify/${certData.code}`}
+                href={`/verify/${certData.number}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-primary font-mono font-semibold hover:underline inline-flex items-center gap-1 cursor-pointer"
+                title={`Open verification for ${certData.number}`}
               >
-                <span>/verify/{certData.code}</span>
+                <span>/verify/{certData.number}</span>
                 <ExternalLink className="h-3 w-3" />
               </a>
             </span>
@@ -210,14 +256,14 @@ export default function CertificateDetailPage({ params }: CertificateDetailProps
 
           <div className="flex items-center gap-1.5">
             <Globe className="h-3.5 w-3.5 text-blue-600" />
-            <span>College Portal: </span>
+            <span>Official College Website: </span>
             <a
-              href={certData.collegeUrl}
+              href="https://smru.edu.in/"
               target="_blank"
               rel="noopener noreferrer"
               className="text-blue-600 font-mono font-semibold hover:underline inline-flex items-center gap-1"
             >
-              <span>{certData.collegeUrl}</span>
+              <span>https://smru.edu.in/</span>
               <ExternalLink className="h-3 w-3" />
             </a>
           </div>

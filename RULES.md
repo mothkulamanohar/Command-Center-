@@ -22,3 +22,4 @@
     visibility rules in SPEC §3.2, §7.5, §10.5 and §13.6 exactly. Never log locations,
     feedback comments or certificate codes in plain application logs.
 19. (v1.1) The only route without login is /verify. Never add another public route.
+20. PROTECTED DATA: Treat all existing database records, storage (localStorage, sessionStorage, IndexedDB), and user data as strictly protected. Never run destructive db resets, seed over existing data, delete, or replace records. Fix code errors without modifying existing data. Any potentially destructive DB operation must be halted for explicit user approval.

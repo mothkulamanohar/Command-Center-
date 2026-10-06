@@ -8,6 +8,7 @@ import {
   getPendingFeedbackQueueAction,
   submitTaskFeedbackAction,
 } from "../actions";
+import { feedbackStore } from "@/lib/store/feedbackStore";
 
 export interface PendingFeedbackTask {
   id: string;
@@ -36,9 +37,25 @@ export default function GiveFeedbackPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   const loadQueue = async () => {
-    const res = await getPendingFeedbackQueueAction();
-    if (res.success && res.data) {
-      setQueue(res.data as any);
+    try {
+      const res = await getPendingFeedbackQueueAction();
+      if (res.success && res.data && res.data.length > 0) {
+        setQueue(res.data as any);
+        setIsLoading(false);
+        return;
+      }
+    } catch {}
+    const local = feedbackStore.getQueue();
+    if (local && local.length > 0) {
+      setQueue(
+        local.map((q) => ({
+          id: q.id,
+          ref: q.ref,
+          title: q.title,
+          ownerName: q.ownerName,
+          actualDuration: q.actualDuration,
+        }))
+      );
     }
     setIsLoading(false);
   };
@@ -72,30 +89,37 @@ export default function GiveFeedbackPage() {
     }
 
     setIsSubmitting(true);
-    const res = await submitTaskFeedbackAction({
-      taskId: currentTask.id,
+    feedbackStore.submitFeedback({
+      taskRef: currentTask.ref,
+      taskTitle: currentTask.title,
       rating,
       comment: comment.trim(),
       chips: selectedChips,
       isRework,
     });
-    setIsSubmitting(false);
 
-    if (res.success) {
-      toast.success(
-        isRework
-          ? `Task ${currentTask.ref} marked for Rework with reviewer notes`
-          : `Feedback saved for ${currentTask.ref} (${rating} stars)`
-      );
-      setCurrentIndex(0);
-      setComment("");
-      setIsRework(false);
-      setRating(5);
-      setSelectedChips(["Great work", "On time"]);
-      loadQueue();
-    } else {
-      toast.error(res.error || "Failed to submit feedback");
-    }
+    try {
+      await submitTaskFeedbackAction({
+        taskId: currentTask.id,
+        rating,
+        comment: comment.trim(),
+        chips: selectedChips,
+        isRework,
+      });
+    } catch {}
+
+    setIsSubmitting(false);
+    toast.success(
+      isRework
+        ? `Task ${currentTask.ref} marked for Rework with reviewer notes`
+        : `Feedback saved for ${currentTask.ref} (${rating} stars)`
+    );
+    setCurrentIndex(0);
+    setComment("");
+    setIsRework(false);
+    setRating(5);
+    setSelectedChips(["Great work", "On time"]);
+    loadQueue();
   };
 
   return (

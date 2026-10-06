@@ -72,7 +72,7 @@ export function DownloadModal({ isOpen, onClose, onDownload }: DownloadModalProp
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-surface rounded-panel border border-line w-full max-w-lg shadow-panel p-5 space-y-4 animate-in fade-in">
+      <div className="bg-surface rounded-panel border border-line w-full max-w-lg shadow-panel p-5 space-y-4 animate-in fade-in max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between pb-3 border-b border-line">
           <div className="flex items-center gap-2">
             <Download className="h-4 w-4 text-primary" />

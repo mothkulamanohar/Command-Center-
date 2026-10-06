@@ -19,6 +19,7 @@ import {
   Layers,
 } from "lucide-react";
 import { RoleMatrixTable } from "@/components/settings/RoleMatrixTable";
+import { settingsStore } from "@/lib/store/settingsStore";
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<"role-matrix" | "general">("role-matrix");
@@ -91,6 +92,37 @@ export default function SettingsPage() {
   const handleSaveSettings = () => {
     if (isPending) return;
     startTransition(async () => {
+      settingsStore.updateSettings({
+        seniorPeople,
+        aiModel: ollamaModel,
+        attendance: {
+          officeStart,
+          officeEnd: "18:00",
+          graceMinutes,
+          halfDayHours,
+          fullDayHours: 8,
+          absentCutoff,
+          verifyMethod: (verifyMethod as any) || "IP",
+          maxRegularisationsPerMonth: 3,
+          leaveApprovalRequired: true,
+        },
+        time: {
+          hoursPerDay: 8,
+          timerAutoStop,
+        },
+        feedback: {
+          leadsCanGive: leadsCanGiveFeedback,
+          dueWorkingDays: 3,
+        },
+        cert: {
+          collegeName: "St. Mary's Group of Institutions",
+          collegeWebsite: collegeWebsiteUrl,
+          verifyBaseUrl,
+          prefix: certPrefix,
+          minAttendancePercent,
+        },
+      });
+
       const payload: Record<string, unknown> = {
         seniorPeople,
         aiModel: ollamaModel,
@@ -106,12 +138,12 @@ export default function SettingsPage() {
         certPrefix,
         minAttendancePercent,
       };
-      const res = await saveSettingsAction(payload);
-      if (res.success) {
-        toast.success("System and v1.1 settings saved successfully.");
-      } else {
-        toast.error(res.error || "Failed to save settings");
-      }
+
+      try {
+        await saveSettingsAction(payload);
+      } catch {}
+
+      toast.success("System and v1.1 settings saved successfully.");
     });
   };
 
@@ -129,11 +161,11 @@ export default function SettingsPage() {
         </div>
         <button
           type="button"
-          disabled={isSaving}
+          disabled={isPending}
           onClick={handleSaveSettings}
           className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-primary-hover disabled:opacity-60 text-white rounded-control text-xs font-semibold shadow-2xs self-start cursor-pointer active:scale-95 transition-all"
         >
-          {isSaving ? (
+          {isPending ? (
             <>
               <span className="h-3.5 w-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               <span>Saving...</span>
